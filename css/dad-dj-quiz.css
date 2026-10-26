@@ -1,0 +1,55 @@
+/* PREVIEW ONLY (questionnaire): Dad's auto-DJ strip inside Dad's header (dad-autodj-quiz.js, phi rule 10).
+   Dad palette only: deep teal #0A3F4C panel, teal #0F5C6E borders, amber #F2A541 key/selected, cream #F6EBD9 text,
+   pale #D6ECEF readout, charcoal #24292E on amber. Static (the header holds still); the beat LED only switches
+   colour on the beat (no animation) and stays off under prefers-reduced-motion. No pop-ups: the demo pumps sit in a
+   native <details>. */
+.dad-head .dad-dj{flex:1 0 100%;display:flex;flex-direction:column;gap:.3rem;margin:.1rem 0 0;padding:.35rem .5rem;
+  background:rgba(10,63,76,.72);border:1px solid #0F5C6E;border-radius:10px;color:#F6EBD9;font:600 .78rem/1.25 "Alegreya Sans",system-ui,sans-serif;min-width:0}
+.dad-dj .dj-row{display:flex;align-items:center;flex-wrap:wrap;gap:.35rem .6rem;min-width:0}
+.dad-dj .dj-play{display:inline-flex;align-items:center;gap:.4rem;min-height:30px;padding:.15rem .75rem .15rem .55rem;border-radius:999px;cursor:pointer;
+  border:1.5px solid #F2A541;background:transparent;color:#F6EBD9;font:700 .8rem/1 "Alegreya Sans",system-ui,sans-serif;letter-spacing:.3px}
+.dad-dj .dj-play[aria-pressed="true"]{background:#F2A541;color:#24292E}
+.dad-dj .dj-play:disabled{opacity:.55;cursor:default}
+.dad-dj .dj-play:focus-visible,.dad-dj summary:focus-visible,.dad-dj input:focus-visible{outline:3px solid #F2A541;outline-offset:2px}
+.dad-dj .dj-led{width:9px;height:9px;border-radius:50%;background:#0F5C6E;box-shadow:inset 0 0 0 1px #D6ECEF}
+.dad-dj .dj-play[aria-pressed="true"] .dj-led{background:#0A3F4C;box-shadow:inset 0 0 0 1px #24292E}
+.dad-dj .dj-led.on{background:#D6ECEF}.dad-dj .dj-led.on2{background:#F6EBD9;box-shadow:0 0 0 2px #0A3F4C}
+.dad-dj .dj-vol{display:inline-flex;align-items:center;gap:.35rem;color:#D6ECEF;font-weight:400}
+.dad-dj .dj-vol input{width:96px;accent-color:#F2A541;margin:0}
+.dad-dj .dj-read{font:600 .74rem/1.25 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#D6ECEF;min-width:0;overflow-wrap:anywhere}
+.dad-dj .dj-pumps{margin:0;font:400 .68rem/1.3 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#BFD9DD;overflow-wrap:anywhere}
+.dad-dj details{margin:0}
+.dad-dj summary{cursor:pointer;color:#F2A541;font-weight:700;font-size:.74rem;width:max-content;list-style-position:inside}
+.dad-dj .dj-chips{display:flex;flex-direction:column;gap:.25rem;padding:.3rem 0 .1rem}
+.dad-dj .dj-grp{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0;padding:0;border:0;min-width:0}
+.dad-dj .dj-grp legend{float:left;margin-right:4px;padding:0;color:#BFD9DD;font-weight:400;font-size:.72rem}
+.dad-dj .dj-grp label{position:relative;display:inline-flex;cursor:pointer}
+.dad-dj .dj-grp input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.dad-dj .dj-grp span{display:inline-block;padding:.18rem .5rem;border-radius:999px;border:1px solid rgba(214,236,239,.45);color:#D6ECEF;font-size:.72rem}
+.dad-dj .dj-grp input:checked + span{background:#F2A541;border-color:#F2A541;color:#24292E}
+.dad-dj .dj-grp input:focus-visible + span{outline:3px solid #F2A541;outline-offset:2px}
+@media(max-width:480px){.dad-head .dad-dj{padding:.3rem .4rem;font-size:.74rem}.dad-dj .dj-vol input{width:78px}.dad-dj .dj-read{flex:1 0 100%}}
+@media(prefers-reduced-motion:reduce){.dad-dj .dj-led.on,.dad-dj .dj-led.on2{background:#0F5C6E}}
+/* knobs open at their live value (owner 13:51 AWST 26 Oct): the live chip carries an underline marker; the checked chip = live + nudge.
+   Changes glide (rule 6) over phi-step durations. */
+.dad-dj .dj-grp span{transition:background-color .618s ease,border-color .618s ease,color .618s ease,box-shadow .618s ease}
+.dad-dj .dj-grp label.is-live span{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+.dad-dj .dj-play.is-resuming .dj-led{animation:djpResume 2.618s ease-in-out infinite}
+@keyframes djpResume{50%{opacity:.382}}
+@media(prefers-reduced-motion:reduce){.dad-dj .dj-grp span{transition:none}.dad-dj .dj-play.is-resuming .dj-led{animation:none}}
+/* DJ effects section (owner 14:34 AWST 26 Oct): same chips as the pump knobs, a quiet header with the random-effects button */
+.dad-dj .dj-fx{display:flex;flex-direction:column;gap:.25rem;margin-top:.3rem;padding-top:.3rem;border-top:1px solid rgba(214,236,239,.18)}
+.dad-dj .dj-fx-hd{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:#BFD9DD;font-size:.72rem}
+.dad-dj .dj-fx-note{opacity:.7}
+.dad-dj .dj-fxr{display:inline-flex;align-items:center;gap:4px;padding:.18rem .55rem;border-radius:999px;border:1px solid rgba(214,236,239,.45);background:transparent;color:#D6ECEF;font:inherit;font-size:.72rem;cursor:pointer;-webkit-touch-callout:none;user-select:none}
+.dad-dj .dj-fxr:focus-visible{outline:3px solid #F2A541;outline-offset:2px}
+.dad-dj .dj-fxr.is-mixing{animation:djfxr .618s ease}
+@keyframes djfxr{0%{box-shadow:0 0 0 0 rgba(242,165,65,.7)}100%{box-shadow:0 0 0 8px rgba(242,165,65,0)}}
+@media (prefers-reduced-motion:reduce){.dad-dj .dj-fxr.is-mixing{animation:none}}
+/* per-knob random + live needles (owner 15:14 AWST 26 Oct): a tiny die on every knob, a needle gliding under the chips to the live position */
+.dad-dj .dj-grp{position:relative;padding-bottom:5px}
+.dad-dj .dj-kr{order:-1;flex:none;display:inline-grid;place-items:center;width:24px;height:24px;margin-right:2px;padding:0;line-height:1;border-radius:50%;border:1px solid rgba(214,236,239,.35);background:transparent;color:#D6ECEF;font-size:.62rem;cursor:pointer;-webkit-touch-callout:none;user-select:none}
+.dad-dj .dj-kr:focus-visible{outline:3px solid #F2A541;outline-offset:2px}
+.dad-dj .dj-kr.is-mixing{animation:djfxr .618s ease}
+.dad-dj .dj-needle{position:absolute;left:-4px;top:0;width:10px;height:3px;border-radius:2px;background:#F2A541;box-shadow:0 0 6px rgba(242,165,65,.8);pointer-events:none;transition:transform .618s cubic-bezier(.38,0,.38,1)}
+@media (prefers-reduced-motion:reduce){.dad-dj .dj-needle{transition:none}.dad-dj .dj-kr.is-mixing{animation:none}}
