@@ -43,7 +43,11 @@
     '#gate .mk svg{width:' + P(1.5) + 'em;height:' + P(1.5) + 'em;overflow:visible}' +
     '#gate .mk .o{transform-origin:32px 32px;animation:gOrb ' + P(7) + 's linear infinite}#gate .mk .o2{animation-duration:' + P(8) + 's;animation-direction:reverse}' +
     '#gate .mk .b{animation:gBar ' + P(3) + 's ease-in-out infinite alternate}#gate .mk .b2{animation-delay:-' + (Math.pow(PHI, 3) * 0.618).toFixed(3) + 's}' +
-    '#gate .bg{position:fixed;inset:0;pointer-events:none;overflow:hidden;opacity:' + P(-4) + '}' +
+    '#gate .bg{position:fixed;inset:0;pointer-events:none;overflow:hidden;opacity:' + P(-4) + ';transition:opacity ' + P(2) + 's ease}' +
+    '#gate.hv-on .bg{opacity:' + P(-6) + '}' +   // rings fade under the hostess
+    '#gate .hvw{position:fixed;inset:0;pointer-events:none;overflow:hidden}' +
+    '#gate .hvw .hv{position:absolute;top:0;height:100%;width:auto;max-width:none;left:50%;transform:translateX(-' + (100 / PHI / PHI).toFixed(1) + '%);background:#000}' +   // her body right of centre, the sweeping hand lands on the box
+    '@media (orientation:portrait){#gate{align-items:flex-end;padding-bottom:max(env(safe-area-inset-bottom),' + (100 * Math.pow(PHI, -5)).toFixed(2) + 'svh)}}' +
     '#gate .bg i{position:absolute;left:50%;top:50%;width:' + P(6) + 'vmax;height:' + P(5) + 'vmax;margin:-' + (Math.pow(PHI, 5) / 2).toFixed(3) + 'vmax 0 0 -' + (Math.pow(PHI, 6) / 2).toFixed(3) + 'vmax;border:1px solid #0AF2FF;border-radius:50%;animation:gOrb ' + P(8) + 's linear infinite}' +
     '#gate .bg i:nth-child(2){border-color:#00C896;animation-duration:' + P(9) + 's;animation-direction:reverse;transform:rotate(' + (360 / PHI / PHI).toFixed(1) + 'deg)}' +
     '#gate .bg i:nth-child(3){border-color:#1F5478;width:' + P(5) + 'vmax;height:' + P(4) + 'vmax;margin:-' + (Math.pow(PHI, 4) / 2).toFixed(3) + 'vmax 0 0 -' + (Math.pow(PHI, 5) / 2).toFixed(3) + 'vmax;animation-duration:' + P(7) + 's}' +
@@ -61,6 +65,13 @@
     '<input type="password" id="g-pw" placeholder="passcode" aria-label="Passcode" autocomplete="off" autocapitalize="off" spellcheck="false">' +
     '<button type="submit" id="g-go">Enter</button><div class="msg" id="g-msg" role="status" aria-live="polite"></div></form>';
   body.appendChild(g);
+  // hostess loop behind the box: after first paint + idle, never before the mark and box are drawn (js/hostess.js)
+  var hvw = d.createElement('div'); hvw.className = 'hvw'; hvw.setAttribute('aria-hidden', 'true'); g.insertBefore(hvw, g.firstChild.nextSibling);
+  w.requestAnimationFrame(function () { setTimeout(function () {
+    var sc = d.createElement('script'); sc.src = 'js/hostess.js?v=1'; sc.async = true;
+    sc.onload = function () { try { if (w.Hostess) { w.Hostess.mount(hvw); g.className = 'hv-on'; } } catch (e) {} };
+    d.head.appendChild(sc);
+  }, Math.round(1000 / PHI)); });
   var f = g.querySelector('form'), age = g.querySelector('#g-age'), pw = g.querySelector('#g-pw'), go = g.querySelector('#g-go'), msg = g.querySelector('#g-msg');
   function say(t, bad) { msg.textContent = t; msg.className = 'msg' + (bad ? ' bad' : ''); }
   function hex(buf) { var a = new Uint8Array(buf), s = ''; for (var i = 0; i < a.length; i++) s += (a[i] < 16 ? '0' : '') + a[i].toString(16); return s; }

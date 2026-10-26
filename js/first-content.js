@@ -1,7 +1,7 @@
 /* first-content.js: the first content item on Dad's home screen (owner 15:24 AWST 26 Oct: "create the first piece of content for my
    website and just have it be my logo page so if I press on that it goes to where I add my logo").
-   ONE card in the content layer (#home-main): Dad's equals mark, live (it mirrors the header mark's <img>, so it shows the slim static
-   mark at once and the animated head mark once tier 3 has swapped it in; no extra download), with the label SITE_TITLE and "logo".
+   ONE card in the content layer (#home-main): the hostess loop preview window (js/hostess.js; was the big equals mark until 26 Oct
+   17:23 AWST) with the label SITE_TITLE.
    TAP: opens Dad's logo view, the same LogoZoom 'dad' zoom the header mark opens (detailed mark, eq-physics equals, logo sound), growing
    from the card. If the zoom module has not loaded yet, the card presses the header mark, whose loader fetches it on demand.
    LAYERS: the card sits in the normal flow (z-index 1): the space loop, matrix rain, emoji scene, Sun/Earth and ping layers (fixed,
@@ -25,8 +25,9 @@
       'background:transparent;border:1px solid rgba(31,84,120,' + r(-1) + ');border-radius:calc(' + U + ' * ' + r(-6) + ');' +
       'color:#9DBCCE;font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;' +
       'transition:border-color ' + T + ' ease,box-shadow ' + T + ' ease,transform ' + r(-5) + 's ease}' +   // press inside the 0.1 s tap rail (PHI^-5 s)
-    '.fc-mark{display:block;width:calc(' + U + ' * ' + r(-3) + ');height:calc(' + U + ' * ' + r(-3) + ');' +
-      'filter:drop-shadow(0 0 calc(' + U + ' * ' + r(-8) + ') rgba(10,242,255,' + r(-3) + '))}' +
+    '.fc-hvw{position:relative;display:block;width:calc(' + U + ' * ' + r(-2) + ');aspect-ratio:480/848;overflow:hidden;background:#000;' +
+      'border-radius:calc(' + U + ' * ' + r(-8) + ')}' +   // hostess preview window (Danny 17:23 AWST 26 Oct): replaces the big mark; the header mini mark is unchanged
+    '.fc-hvw .hv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#000}' +
     '.fc-t{display:block;font-size:1rem;letter-spacing:calc(1em * ' + r(-6) + ');color:#9DBCCE;line-height:' + r(1) + '}' +
     '.fc-s{display:block;font-size:calc(1rem * ' + r(-1 / 2) + ');letter-spacing:calc(1em * ' + r(-4) + ');text-transform:uppercase;color:#85A6BB}' +
     '@media (hover:hover){.fc-card:hover{border-color:#0AF2FF;box-shadow:0 0 calc(' + U + ' * ' + r(-6) + ') rgba(10,242,255,' + r(-2) + ')}}' +
@@ -39,12 +40,12 @@
   var sec = doc.createElement('section'); sec.className = 'fc'; sec.setAttribute('aria-label', 'Content');
   var b = doc.createElement('button'); b.type = 'button'; b.className = 'fc-card'; b.setAttribute('aria-haspopup', 'dialog');
   b.setAttribute('aria-label', 'Open ' + (window.SITE_NAME || '') + "'s logo");
-  var im = doc.createElement('img'); im.className = 'fc-mark'; im.alt = ''; im.decoding = 'async'; im.src = hi.src;
+  var hvw = doc.createElement('span'); hvw.className = 'fc-hvw'; hvw.setAttribute('aria-hidden', 'true');
   var t = doc.createElement('span'); t.className = 'fc-t'; t.textContent = (window.SITE_TITLE||window.SITE_NAME||'');
-  var s = doc.createElement('span'); s.className = 'fc-s'; s.textContent = 'logo';
-  b.appendChild(im); b.appendChild(t); b.appendChild(s); sec.appendChild(b); main.insertBefore(sec, main.querySelector('.hw'));   // first, above the home windows (js/home-windows.js) whichever loads first
-  // live mark: follow the header mark's src (slim static first, the animated head mark once tier 3 swaps it in; same cached file)
-  if (root.MutationObserver) new MutationObserver(function () { if (im.src !== hi.src) im.src = hi.src; }).observe(hi, { attributes: true, attributeFilter: ['src'] });
+  b.appendChild(hvw); b.appendChild(t); sec.appendChild(b); main.insertBefore(sec, main.querySelector('.hw'));   // first, above the home windows (js/home-windows.js) whichever loads first
+  // hostess loop in the card (js/hostess.js: poster first, clip after first paint + idle, seam fade, opacity by DIAL_POLITE_DIRTY)
+  (function () { var sc = doc.createElement('script'); sc.src = 'js/hostess.js?v=1'; sc.async = true;
+    sc.onload = function () { try { if (root.Hostess) root.Hostess.mount(hvw); } catch (x) {} }; doc.head.appendChild(sc); })();
   b.addEventListener('click', function (e) {
     e.preventDefault(); e.stopPropagation();
     try { root.PhiAdapt && PhiAdapt.signal('dad-mark', 't'); } catch (x) {}
