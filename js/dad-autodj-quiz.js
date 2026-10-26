@@ -3,12 +3,8 @@
 (function () {
   'use strict';
   var PHI = 1.6180339887;
-  var MOOD = { neutral: 0, calm: 1, warm: 0.5, proud: 0, playful: -0.5, excited: -1, serious: 0.5 };
   var GENRES = { neutral: ['cinematic'], calm: ['ambient', 'acoustic'], warm: ['soul', 'folk'], proud: ['cinematic'], playful: ['indie-pop'],
                  excited: ['upbeat-pop', 'electronic'], serious: ['piano'] };
-  var URG = { idle: 0, 'new': -0.5, urgent: -1.5 };
-  var WX = { hot: -1, sun: -0.5, storm: 0, cloud: 0, rain: 0.5, fog: 1, night: 0, snow: 0 };
-  var TIME = { day: 0, evening: 0.5, night: 1.5, deep: 2 };
   var K_VOL = 'preview.dadDJ.vol', MS = 1e3, SPM = 60, SPB = 4;   // unit: ms per s, seconds per minute, sixteenths per beat
   // knob ladders, ordered by their phi-step pump value (calm/slow at the high end); a hand change is a nudge along these
   var LADDER = { mood: ['excited', 'playful', 'neutral', 'proud', 'warm', 'serious', 'calm'], urgency: ['urgent', 'new', 'idle'],
@@ -26,15 +22,15 @@
     var i = L.indexOf(lv); if (i < 0) i = L.indexOf('cloud'); return L[clamp(i + nudge[k], 0, L.length - 1)];
   }
   function setTo(k, v) { var L = LADDER[k], i = L.indexOf(liveOf(k)); if (i < 0) i = L.indexOf('cloud'); nudge[k] = L.indexOf(v) < 0 ? 0 : L.indexOf(v) - i; }
-  if (MOOD.hasOwnProperty(qp('mood'))) setTo('mood', qp('mood'));
-  if (URG.hasOwnProperty(qp('urgency'))) setTo('urgency', qp('urgency'));
+  if (LADDER.mood.indexOf(qp('mood')) >= 0) setTo('mood', qp('mood'));
+  if (LADDER.urgency.indexOf(qp('urgency')) >= 0) setTo('urgency', qp('urgency'));
   var demo = { get mood() { return eff('mood'); }, get urgency() { return eff('urgency'); } };
   var hourOverride = /^\d{1,2}$/.test(qp('hour') || '') ? (+qp('hour')) % 24 : null;
   function perthHour() {
     if (hourOverride != null) return hourOverride;
     try { return +new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Perth', hour: 'numeric', hourCycle: 'h23' }).format(new Date()) % 24; } catch (e) { return new Date().getHours(); }
   }
-  function liveSky() { var w = window.SIM_WX; return w && WX.hasOwnProperty(w.cond) ? (w.cond === 'snow' ? 'cloud' : w.cond) : null; }
+  function liveSky() { var w = window.SIM_WX; return w && (LADDER.sky.indexOf(w.cond) >= 0 || w.cond === 'snow') ? (w.cond === 'snow' ? 'cloud' : w.cond) : null; }
   function sky() { return eff('sky'); }
   function timeSlot() { return eff('time'); }
   function liveTime() {
@@ -44,9 +40,41 @@
     if (h >= 18) return 'evening';
     return 'day';
   }
-  function pumps() {
-    var t = timeSlot(), k = sky();
-    return { time: t, tp: TIME[t], sky: k || 'none', wp: k ? WX[k] : 0, urgency: demo.urgency, up: URG[demo.urgency], mood: demo.mood, mp: MOOD[demo.mood] };
+  // ---------- DATA LAYER (MIDI Bot pump-mapping sweep #2, owner OK 17:05 AWST 26 Oct): streams -> six dimensions, no hand tables ----------
+  // Every stream is z in -1..1 measured against ITS OWN range (today's min..max, the last day's pressures, the sun's own height, the
+  // moon's own light), from the page's one weather request (site.html SIM_WX.f), the sky clocks (js/rhythm-continuity.js) and the cached
+  // tide (js/phi-pumps.js). Each knob's hand nudge is a stream too: ladder rungs / the ladder's own half length. A missing stream is 0.
+  // Six intent dimensions d = 1 / (1 + PHI^-X), X = sum of sign x z x the mix's coupling weight for that stream's knob group (the
+  // existing energy() form). The signs are taste calls (MIDI Bot sweep 4b), so they sit on a dial: DadAutoDJ.sign(stream, dim, -1|0|1).
+  var DIMS = ['drive', 'density', 'tension', 'brightness', 'weight', 'space'];
+  var SIGN0 = { sun: [1, 0, 0, 1, 0, -1], temp: [1, 0, 0, 1, 0, 0], humid: [0, 0, 0, -1, 1, 1], cloud: [0, 0, 0, -1, 0, 1], wind: [1, 1, 0, 0, 0, 0],   // unit: signs (MIDI Bot sweep 4b)
+    gust: [0, 1, 1, 0, 0, 0], pres: [0, 0, -1, 0, 1, 0], uv: [0, 0, 0, 1, 0, 0], storm: [1, 0, 1, 0, 0, 0], moon: [0, 0, 0, 0, 0, 1], tide: [0, 0, 0, 0, 1, 0],   // unit: signs
+    season: [0, 0, 0, 1, 0, 0], urgency: [1, 0, 1, 0, 0, 0], mood: [1, 1, 0, 0, 0, -1], time: [1, 0, 0, 1, 0, -1], sky: [1, 0, 0, 1, 0, -1] };   // unit: signs; the time and sky knobs read like the sun
+  var GRP = { sun: 0, season: 0, moon: 0, time: 0, temp: 1, humid: 1, cloud: 1, wind: 1, gust: 1, pres: 1, uv: 1, storm: 1, tide: 1, sky: 1, urgency: 2, mood: 3 };   // which knob column (tp wp up mp) couples it
+  var sign = JSON.parse(JSON.stringify(SIGN0));
+  function span(v, lo, hi) { return isFinite(v) && isFinite(lo) && isFinite(hi) && hi > lo ? clamp(2 * (v - lo) / (hi - lo) - 1, -1, 1) : null; }   // its own range -> -1..1
+  function streams() {
+    var z = {}, R = window.RhythmContinuity, w = window.SIM_WX, f = w && w.f, P = window.PhiPumps, RAD = Math.PI / 180, PCT = 100;   // unit: radians per degree; percent
+    if (R && R.sun) { var q = R.sun(); z.sun = Math.sin(q.elev * RAD); z.moon = 2 * q.moonLit - 1; z.season = -Math.sin(2 * Math.PI * q.season); }   // unit: season = solar longitude turns; Perth is south of the equator, so summer is at 3/4 of a turn
+    if (f) {
+      z.temp = span(f.temp, f.tmin, f.tmax); z.humid = span(f.rh, 0, PCT); z.cloud = span(f.cc, 0, PCT); z.wind = span(Math.min(f.ws, f.wmax), 0, f.wmax);
+      z.gust = f.wg + f.ws > 0 ? (f.wg - f.ws) / (f.wg + f.ws) : null; z.pres = span(f.p, f.plo, f.phi); z.uv = span(f.uv, 0, f.uvmax);
+      z.storm = f.code >= 95 && f.code <= 99 ? 1 : 0;                     // cite: WMO weather codes 95-99 = thunderstorm
+    }
+    if (P && P.subscribe) { var td = P.subscribe('tide').get(); if (td != null) z.tide = td; }
+    Object.keys(LADDER).forEach(function (k) { z[k] = -2 * nudge[k] / (LADDER[k].length - 1); });   // a rung toward the calm end lowers it; unit: half the ladder = 1
+    Object.keys(z).forEach(function (k) { if (z[k] == null || !isFinite(z[k])) delete z[k]; });
+    return z;
+  }
+  function dimX(w, z) {                                                    // w: coupling weight per knob group (tp wp up mp); X per dimension
+    z = z || streams(); var X = {}; DIMS.forEach(function (d, i) { var x = 0; Object.keys(z).forEach(function (k) { var sg = sign[k]; if (sg && sg[i]) x += sg[i] * z[k] * (w ? w[GRP[k]] : 1); }); X[d] = x; });
+    return X;
+  }
+  function dimsOf(X) { var o = {}; DIMS.forEach(function (d) { o[d] = 1 / (1 + Math.pow(PHI, -X[d])); }); return o; }   // the energy() form
+  function pumps() {                                                      // per knob group: its pull toward calm (minus its drive), so sum = -X.drive
+    var t = timeSlot(), k = sky(), z = streams(), g = [0, 0, 0, 0];
+    Object.keys(z).forEach(function (s) { if (sign[s] && sign[s][0]) g[GRP[s]] -= sign[s][0] * z[s]; });
+    return { time: t, tp: g[0], sky: k || 'none', wp: g[1], urgency: demo.urgency, up: g[2], mood: demo.mood, mp: g[3], z: z };
   }
   // ---------- MIX GENOME (owner 14:10 AWST 26 Oct: 'if I don't like the music I can just hit it') ----------
   // The real inputs (time, sky, urgency, mood) are never touched; a mix only changes HOW they feed the music: the pump -> parameter
@@ -76,14 +104,13 @@
     return g;
   }
   M = genome(null);
-  function sOf(p, i) { var w = M.W[i]; return w[0] * p.tp + w[1] * p.wp + w[2] * p.up + w[3] * p.mp; }
   function compute(p) {
-    p = p || pumps();
-    var s = p.tp + p.wp + p.up + p.mp, S = PAR.map(function (x, i) { return sOf(p, i); }), sf = S[0] + M.cascade, sb = S[1], sv = S[2], sl = S[3];   // mix: per-parameter coupling
+    p = p || pumps(); var X = PAR.map(function (x, i) { return dimX(M.W[i], p.z); });   // mix: each parameter hears the knob groups through its own coupling row
+    var s = p.tp + p.wp + p.up + p.mp, sf = (X[0].space - X[0].drive) / 2 + M.cascade, sb = -X[1].drive, sv = -(X[2].weight + X[2].drive) / 2, sl = -X[3].density;   // calm/spacious = long fades, drive = tempo, heavy and driven = louder, dense = shorter tracks; unit: mean of two dimensions
     var vol = clamp(IPH * Math.pow(PHI, -sv / 4), 0.25, 0.8);   // phi: base level PHI^-1 (was a fixed 0.55)
     if (p.mood === 'serious' || p.urgency === 'urgent') vol = 0.3;
     return { p: p, s: s, fade: clamp(Math.pow(PHI, 3.5 + sf), 2.06, 22.83), bpm: clamp(60 / Math.pow(PHI, -1 + sb / 2) * Math.pow(PHI, M.tempo), 62, 157),
-             vol: vol, trackLen: Math.pow(PHI, Math.max(6, 7.5 + sl)), genres: GENRES[p.mood] || GENRES.neutral, mix: M.seed };   // phi: tracks last at least PHI^6 s (was PHI^4 = 6.9 s when excited/urgent/hot)
+             vol: vol, trackLen: Math.pow(PHI, Math.max(6, 7.5 + sl)), genres: GENRES[p.mood] || GENRES.neutral, mix: M.seed, dims: dimsOf(dimX(null, p.z)) };   // phi: tracks last at least PHI^6 s (was PHI^4 = 6.9 s when excited/urgent/hot)
   }
 
   // ---------- music theory + genre table ----------
@@ -144,7 +171,7 @@
   // This file is the minimal start engine, loaded at tier 1 (just after first paint). js/dj-extras.js (lead voices, drums + noise,
   // reverb impulse, knob chips) loads after sound has begun (or when the pumps panel opens, or at background idle) and glides in over
   // PHI^2 s. The first touch anywhere silently creates/resumes the AudioContext and unlocks the <audio> bridge, so the switch only starts sound.
-  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=9';
+  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=11';
   function loadX() { if (xReq) return; xReq = true; var sc = document.createElement('script'); sc.src = XURL; sc.async = true; document.head.appendChild(sc); }
   function extras(x) {                                                    // called by js/dj-extras.js when it lands
     X = x; XL = 1; var t = ctx ? ctx.currentTime : 0, G = Math.pow(PHI, 2);   // phi: extras glide in over PHI^2 s
@@ -154,7 +181,7 @@
     paint(compute()); loadFX();
   }
   // ---------- effects (owner 14:34 AWST 26 Oct): js/dj-fx.js loads after the extras, once sound exists; dry path -> fx chain over PHI^2 s ----------
-  var FXURL = 'js/dj-fx.js?v=6', fxReq = false, fxDry = null, fxC = null;
+  var FXURL = 'js/dj-fx.js?v=10', fxReq = false, fxDry = null, fxC = null;
   function loadFX() { if (fxReq || !ctx || !X) return; fxReq = true; var sc = document.createElement('script'); sc.src = FXURL; sc.async = true; document.head.appendChild(sc); }
   function fxIn(f) {                                                      // called by js/dj-fx.js: {inp, out}; the chain is transparent at rest
     if (fxC || !ctx) return; fxC = f; var t = ctx.currentTime, G = Math.pow(PHI, 2);   // phi: crossfade PHI^2 s (rule 6)
@@ -164,14 +191,21 @@
   }
   var primed = false, PRIME = ['touchend', 'click', 'keydown'], idleT = 0;
   function prime() {                                                      // first touch anywhere: unlock audio without making a sound
-    if (primed) return; primed = true; PRIME.forEach(function (n) { document.removeEventListener(n, prime, true); });
+    if (primed) return; primed = true; PRIME.forEach(function (n) { document.removeEventListener(n, prime, true); }); document.removeEventListener('pointerdown', primeP, true); document.removeEventListener('pointerup', primeP, true);
     if (!ensure()) return;
-    try { ctx.resume(); } catch (e) {}
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}   // iOS: the ring / silent switch doesn't mute the page
+    try { ctx.resume(); } catch (e) {}                                    // synchronously, inside the gesture, before anything async
     if (el) try { var p = el.play(); if (p && p.then) p.then(function () { if (!playing) el.pause(); }, function () {}); } catch (e) {}
     clearTimeout(idleT); idleT = setTimeout(function () { if (!playing && ctx && !pend) try { ctx.suspend(); } catch (e) {} }, Math.pow(PHI, 6) * MS);   // phi: rest the idle context after PHI^6 s
     if (X && X.reverb) X.reverb(ctx, revIn, bus, Math.pow(PHI, 2));
   }
-  PRIME.forEach(function (n) { document.addEventListener(n, prime, true); });
+  // iPhone unlock (shared.md S-0017; owner 17:04 AWST 26 Oct): touch unlocks on finger LIFT (pointerup / touchend; iOS does not count a
+  // touch pointerdown as a gesture), a mouse on pointerdown, keys on keydown (click stays as the fallback). Everything that needs no tap is
+  // primed before it at idle: the graph and a SUSPENDED AudioContext, the media bridge, audioSession 'playback'; nothing starts.
+  function primeP(e) { if (e.type === 'pointerdown' ? e.pointerType === 'mouse' : e.pointerType !== 'mouse') prime(); }
+  PRIME.forEach(function (n) { document.addEventListener(n, prime, true); }); document.addEventListener('pointerdown', primeP, true); document.addEventListener('pointerup', primeP, true);
+  function prebuild() { if (ctx || !AC) return; if (ensure()) { try { if (ctx.state === 'running' && !playing) ctx.suspend(); } catch (e) {} } try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {} }   // start nothing
+  if (window.LoadTiers && LoadTiers.add) LoadTiers.add(2, prebuild, 'dj prime', { id: 'dj' });
   function ensure() {
     if (ctx || !AC) return ctx;
     try {
@@ -226,40 +260,68 @@
     }
     lp.connect(g); env(g, t, a, vel / Math.sqrt(n), opt.hold != null ? opt.hold : 0.01, rel);   // equal-power: the copies sum to the old level
     var to = tr.out;
-    if (!crowd && ctx.createStereoPanner) { var pn = ctx.createStereoPanner(), w = (1 - u) * IPH + IPH * IPH; pn.pan.value = Math.sin(Math.log2(f) * 12 * 2 * Math.PI * IPH) * w; g.connect(pn); pn.connect(to); }   // unit: 12 semitones per octave; phi: golden-angle spread
+    if (!crowd && ctx.createStereoPanner) { var pn = ctx.createStereoPanner(), w = (tr.dm ? tr.dm.space : 1 - u) * IPH + IPH * IPH; pn.pan.value = Math.sin(Math.log2(f) * 12 * 2 * Math.PI * IPH) * w; g.connect(pn); pn.connect(to); }   // unit: 12 semitones per octave; phi: golden-angle spread
     else g.connect(to);
     if (opt.rev) { var s = ctx.createGain(); s.gain.value = opt.rev; g.connect(s); s.connect(tr.rev); }
   }
   function vibrato(tr) {                                                  // one LFO per track: rate ~PHI^0 Hz (pump-nudged), depth from tension, eased in
     try { var l = ctx.createOscillator(), d = ctx.createGain(), t = ctx.currentTime, u = tr.u == null ? IPH : tr.u;
-      l.frequency.value = Math.pow(PHI, (u - 1 / 2) * IPH); d.gain.setValueAtTime(0, t); d.gain.setTargetAtTime(CENT * Math.pow(PHI, -4) * (IPH + (1 - u) * IPH), t, PHI);   // phi: PHI^-4 semitone x tension, eased over PHI s
+      l.frequency.value = Math.pow(PHI, (u - 1 / 2) * IPH); d.gain.setValueAtTime(0, t); d.gain.setTargetAtTime(CENT * Math.pow(PHI, -4) * (IPH + (tr.dm ? tr.dm.tension : 1 - u) * IPH), t, PHI);   // phi: PHI^-4 semitone x tension, eased over PHI s
       l.connect(d); l.start(t); tr.vib = d; tr.lfo = l; } catch (e) {}
   }
+  // CHIP GRADIENT (owner 16:53 AWST 26 Oct: 'less electronic gaming and more organic ... a little bit of computer game sound every now
+  // and again ... come and go faster and less often'). chip(tr) in 0..1 is the share of chiptune timbre (square/pulse leads, bass and
+  // arpeggio blips, bit-crush) right now: a fast pump pair (periods PHI^PHI.. s) raised to PHI^(PHI + s + 1 - u), so it peaks briefly and
+  // rarely, rarer still as sophistication s rises and energy u falls. Each note draws against it on the golden sequence (no rng use);
+  // a note that misses takes the organic voice: filtered, detuned saw with a breath transient (js/dj-extras.js reed) or a plucked one.
+  var chipP = null;
+  function pumpAt(at) { var P = window.PhiPumps; return (P && P.now ? P.now() : ctx ? ctx.currentTime : 0) + (at != null && ctx ? at - ctx.currentTime : 0); }   // pump clock at audio time at (note time, not schedule time)
+  function chip(tr, at) {                                                 // at: the note's audio time, when given
+    var P = window.PhiPumps; if (!chipP) chipP = P && P.node ? P.node('dj:chip', 2, PHI, IPH, P.page, 7) : { modes: function (t) { return Math.sin(2 * Math.PI * t / Math.pow(PHI, PHI)); } };   // phi: period PHI^PHI s
+    tr = tr && tr.tk || tr; var now = pumpAt(at), x = (1 + clamp(chipP.modes(now), -1, 1)) / 2;
+    var s = tr && tr.s != null ? tr.s : IPH, u = tr && tr.u != null ? tr.u : IPH; return Math.pow(x, Math.pow(PHI, PHI + s + 1 - u));
+  }
+  function chipNote(tr, at) { tr = tr && tr.tk || tr; return frac(((tr.step || 0) + 1) * IPH + (tr.seed | 0) * IPH * IPH) < chip(tr, at); }   // phi: golden-sequence draw
+  function wv(tr, w, at) { return w === 'square' && !chipNote(tr, at) ? 'sawtooth' : w; }   // square waves only while the chip share lets them through
   var INST = {
-    pad:   function (tr, f, t, d, v) { voice(tr, pwave(tr.g.wave || 'sine', tr.s) || tr.g.wave, f, t, d, v * 0.10, { a: d * 0.35, hold: d * 0.6, rel: d * 0.25, cut: tr.g.cut, det: 9, rev: 0.8 }); },
-    pluck: function (tr, f, t, d, v) { voice(tr, tr.g.wave || 'triangle', f, t, d, v * 0.16, { a: 0.003, hold: 0.01, rel: 0.22, cut: tr.g.cut * PHI, sweep: 0.08, rev: 0.4 }); },
+    pad:   function (tr, f, t, d, v) { var w0 = wv(tr, tr.g.wave || 'sine', t); voice(tr, pwave(w0, tr.s) || w0, f, t, d, v * 0.10, { a: d * 0.35, hold: d * 0.6, rel: d * 0.25, cut: tr.g.cut, det: 9, rev: 0.8 }); },
+    pluck: function (tr, f, t, d, v) { voice(tr, wv(tr, tr.g.wave || 'triangle', t), f, t, d, v * 0.16, { a: 0.003, hold: 0.01, rel: 0.22, cut: tr.g.cut * PHI, sweep: 0.08, rev: 0.4 }); },
     bass:  function (tr, f, t, d, v) { if (tr.g.bwave === 'piano') return (INST.piano || INST.pluck)(tr, f, t, d, v * 1.2);
-                                       voice(tr, tr.g.bwave, f, t, d, v * (tr.g.bwave === 'sine' ? 0.22 : 0.16), { a: 0.006, hold: d * 0.8, rel: 0.08, cut: tr.g.cut * IPH }); }
+                                       var bw = wv(tr, tr.g.bwave, t); voice(tr, bw, f, t, d, v * (tr.g.bwave === 'sine' ? 0.22 : 0.16), { a: 0.006, hold: d * (bw === 'square' ? IPH : 0.8), rel: 0.08, cut: tr.g.cut * IPH * (bw !== tr.g.bwave ? IPH : 1) }); }   // phi: the organic bass a rung darker
   };
   // ---------- a track: one generated piece (genre + BPM + seed) ----------
-  function makeTrack(genre, bpm, seed) {
+  // KEY TRAVEL (MIDI Bot transitions design #2; owner 16:30 AWST 26 Oct: 'a gradient really ... on a dial', 'top of the dial can jump
+  // further'): the incoming key is drawn from all twelve roots around the genre's own, weighted by its circle-of-fifths distance d from the
+  // outgoing key signature, w = PHI^(-PHI^2 d / D), D = PHI^(PHI^2 s) with s the outgoing track's sophistication: plain tracks stay in the
+  // same or a neighbouring key signature, sophisticated ones travel further. The seed picks within the weights.
+  // cite: circle of fifths, closely related keys, harmonic mixing (en.wikipedia.org/wiki/Circle_of_fifths, /Closely_related_key, /Harmonic_mixing)
+  function keySig(sc, root) { var best = 0, bn = -1; for (var t = 0; t < 12; t++) { var n = 0; sc.forEach(function (x) { if (SCALES.major.indexOf((((root + x - t) % 12) + 12) % 12) >= 0) n++; }); if (n > bn) { bn = n; best = t; } } return best; }   // unit: 12 pitch classes; the major scale sharing most notes
+  function fifths(a, b) { var d = ((((a - b) * 7) % 12) + 12) % 12; return Math.min(d, 12 - d); }   // unit: 7 semitones per fifth, 12 keys round the circle
+  function travel(sc, base, prev, pick) {
+    var D = Math.pow(PHI, PHI * PHI * clamp(prev.s == null ? IPH : prev.s, 0, 1)), ks = keySig(prev.sc, prev.root), opt = [], sum = 0;
+    for (var o = -6; o < 6; o++) { var w = Math.pow(PHI, -PHI * PHI * fifths(keySig(sc, base + o), ks) / D); opt.push([o, w]); sum += w; }   // unit: the twelve roots around the genre's own
+    var x = pick * sum; for (var i = 0; i < opt.length; i++) { x -= opt[i][1]; if (x <= 0) return base + opt[i][0]; } return base;
+  }
+  function makeTrack(genre, bpm, seed, prev, root0) {
     var g = GEN[genre], r = rng(seed), sc = SCALES[g.scale], root = g.root + [-2, 0, 0, 2, 3, -3][Math.floor(r() * 6)];
+    if (typeof root0 === 'number' && isFinite(root0)) root = root0; else if (prev && prev.sc) root = travel(sc, g.root, prev, frac((seed | 0) * IPH));   // restored key, or travel from the outgoing one
     var pi0 = Math.floor(r() * g.progs.length), prog = g.progs[pi0], progB = g.progs[(pi0 + 1) % g.progs.length], mel = [], deg = 7 + Math.floor(r() * 3);   // B section: the genre's other progression
+    var dm = dimsOf(dimX(null));                                  // the six dimensions at the track's birth (one rung either way: PHI^(2d - 1))
     for (var i = 0; i < 32; i++) {                                // a 2-bar motif, repeated with small variations
-      var strong = i % 4 === 0, p = (strong ? g.mel * 2.2 : (i % 2 ? g.mel * 0.6 : g.mel)) * Math.pow(PHI, M.density);   // mix: density rung
+      var strong = i % 4 === 0, p = (strong ? g.mel * 2.2 : (i % 2 ? g.mel * 0.6 : g.mel)) * Math.pow(PHI, M.density + 2 * dm.density - 1);   // mix: density rung; data: density
       if (r() < p) { deg = clamp(deg + [-2, -1, -1, 0, 1, 1, 2, 3][Math.floor(r() * 8)], 4, 13); mel.push(deg); } else mel.push(null);
     }
     // CALL AND RESPONSE (MIDI Bot directions): the motif is 64 steps; the answer is the call inverted around its first note
     var piv = mel.filter(function (x) { return x != null; })[0] || deg; for (var i2 = 0; i2 < 32; i2++) mel.push(mel[i2] == null ? null : clamp(2 * piv - mel[i2], 2, 16));   // unit: scale-degree range
-    var u = energy(), gx = Object.create(g); gx.cut = mtof(root + 12) * Math.pow(PHI, PHI * PHI + 2 * u - 1);   // phi: brightness = PHI^(PHI^2 +- 1 rung) over the root (rule 8: no fixed cut)
+    var u = energy(), gx = Object.create(g); gx.cut = mtof(root + 12) * Math.pow(PHI, PHI * PHI + 2 * dm.brightness - 1);   // phi: brightness = PHI^(PHI^2 +- 1 rung) over the root (rule 8: no fixed cut); data: the brightness dimension
     var out = ctx.createGain(); out.gain.value = 0.0001; out.connect(bus);
     var wet = ctx.createGain(); wet.gain.value = 0.0001; wet.connect(revIn);                    // reverb send, faded with the track
-    var rv = ctx.createGain(); rv.gain.value = g.rev; rv.connect(wet);
+    var rv = ctx.createGain(); rv.gain.value = g.rev * Math.pow(PHI, 2 * dm.space - 1); rv.connect(wet);   // data: space, a rung either way
     var xo = ctx.createGain(); xo.gain.value = XL; xo.connect(out);                                // extras (leads, drums) glide in here
     var P = window.PhiPumps, node = !P || !M.route ? null : M.route === 1 ? P.page : P.logo('dad');   // mix: which pump-tree node drives the dynamics
     var lay = function (to) { var n = ctx.createGain(); n.gain.value = 1; n.connect(to); return { g: gx, out: n, rev: rv }; };   // energy-arc layers (setTarget ramps, never gates)
     var L = { drums: lay(xo), lead: lay(xo), bass: lay(out), pad: lay(out) };
-    var T = { dr: M.donor ? GEN[M.donor] : g, shift: M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: gx, sc: sc, root: root, prog: prog, progB: progB, mel: mel, r: r, out: out, wet: wet, rev: rv, xo: xo, x: { g: gx, out: xo, rev: rv }, L: L, u: u, cut: gx.cut, lastCh: null, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() }; T.s = soph(T); vibrato(T); T.x.tk = T; Object.keys(L).forEach(function (k) { L[k].tk = T; }); return T;   // phi: first step PHI^-6 s out
+    var T = { dr: M.donor ? GEN[M.donor] : g, shift: M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: gx, sc: sc, root: root, prog: prog, progB: progB, mel: mel, r: r, out: out, wet: wet, rev: rv, xo: xo, x: { g: gx, out: xo, rev: rv }, L: L, u: u, dm: dm, cut: gx.cut, lastCh: null, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() }; T.s = soph(T); vibrato(T); T.x.tk = T; Object.keys(L).forEach(function (k) { L[k].tk = T; }); return T;   // phi: first step PHI^-6 s out
   }
   // ---------- richer DJ (owner 14:42 AWST 26 Oct; MIDI Bot directions top 3) ----------
   // ENERGY ARC: a = track age / track length (analytic from tr.born, so continuity keeps the place). e(a) rises to a peak at
@@ -272,16 +334,16 @@
     if (a <= bd) return lo + (1 - lo) * (1 - s2((a - pk) / (bd - pk)));
     return lo + (IPH - lo) * s2((a - bd) / (1 - bd));
   }
-  function ageOf(tr) { return clamp((Date.now() - tr.born) / MS / (tr.trackLen || compute().trackLen), 0, 1); }
+  function ageOf(tr, t) { var w = Date.now() + (t != null && ctx ? (t - ctx.currentTime) * MS : 0); return clamp((w - tr.born) / MS / (tr.trackLen || compute().trackLen), 0, 1); }   // at the note's audio time t when given (so the arc does not depend on when the clock scheduled it)
   function shape(tr, t, barLen) {                                         // once a bar: glide the layers to the arc
-    var a = ageOf(tr), e = arc(a), tau = barLen * IPH; tr.e = e; tr.bd = a > IPH && e < IPH;
-    tr.L.drums.out.gain.setTargetAtTime(e, t, tau); tr.L.lead.out.gain.setTargetAtTime(e, t, tau); tr.L.bass.out.gain.setTargetAtTime(tr.noBass ? 0 : Math.sqrt(e), t, tau);
+    var a = ageOf(tr, t), e = arc(a), tau = barLen * IPH; tr.e = e; tr.bd = a > IPH && e < IPH;
+    tr.L.drums.out.gain.setTargetAtTime(e, t, tau); tr.L.lead.out.gain.setTargetAtTime(e, t, tau); tr.L.bass.out.gain.setTargetAtTime(tr.noBass ? 0 : Math.sqrt(e * Math.pow(PHI, 2 * (tr.dm ? tr.dm.weight : 1 / 2) - 1)), t, tau);   // data: weight, half a rung either way under the root
     tr.L.pad.out.gain.setTargetAtTime(clamp(IPH * IPH + (1 - e) * PHI, 0, 1), t, tau);
   }
   // VOICE LEADING + EXTENSIONS: 3 + a pump-ratio count of stacked thirds (triad, 7th, 9th); of the inversions (+-12 per note) the one
   // that moves least from the last chord is played, held near the root-position register.
   function voiced(tr, deg) {
-    var x = clamp((1 - tr.u) + (tr.g.sev ? IPH : 0) + (tr.bd ? IPH * IPH : 0), 0, 1), n = 3 + Math.round(2 * x);   // unit: a triad plus up to two more thirds
+    var x = clamp((tr.dm ? tr.dm.density : 1 - tr.u) + (tr.g.sev ? IPH : 0) + (tr.bd ? IPH * IPH : 0), 0, 1), n = 3 + Math.round(2 * x);   // unit: a triad plus up to two more thirds; data: density
     var base = chordNotes(tr.sc, tr.root, deg, 0, n), mean = function (a) { return a.reduce(function (s, v) { return s + v; }, 0) / a.length; }, m0 = mean(base);
     if (!tr.lastCh) return (tr.lastCh = base);
     var best = base, bc = Infinity, prev = tr.lastCh.slice().sort(function (p, q) { return p - q; });
@@ -304,20 +366,22 @@
   var AXIS = [3, -3, 6], K332 = [0, 6, 12];                               // cite: axis substitutes (minor third, tritone); 3+3+2 eighths in sixteenths
   function playStep(tr, t) {
     var g = tr.g, st = tr.step, s16 = st % 16, bar = Math.floor(st / 16), dur16 = 60 / tr.bpm / 4, v;
-    var a0 = ageOf(tr), secB = a0 >= IPH * IPH && a0 < IPH + Math.pow(PHI, -3), pr = secB && tr.progB ? tr.progB : tr.prog;
+    var a0 = ageOf(tr, t), secB = a0 >= IPH * IPH && a0 < IPH + Math.pow(PHI, -3), pr = secB && tr.progB ? tr.progB : tr.prog;
     if (s16 === 0 && secB !== tr.secB) { tr.secB = secB; tr.secBar = bar; }
     var deg = pr[Math.floor(bar / g.bars) % pr.length], barLen = dur16 * 16 * g.bars, first = s16 === 0 && bar % g.bars === 0;
     if (s16 === 0 || tr.e == null) shape(tr, t, barLen);
     var peak = tr.e > 1 - Math.pow(PHI, -3), phr = bar - (tr.secBar || 0), fill = (phr % SPB) === SPB - 1, rise = Math.floor(phr / SPB) % SPB;   // unit: phrase = SPB bars, rise cycles through SPB degrees
-    if (first) tr.ax = peak && !tr.bridge && !tr.leaving && bar % 2 && tr.r() < IPH ? AXIS[Math.floor(tr.r() * AXIS.length)] : 0;
-    var dyn = 1; if (tr.node) try { dyn = tr.node.out(); } catch (e) {}      // mix: routed pump-tree dynamics (around 1)
-    var ch = first || !tr.ch ? (tr.ch = voiced(tr, deg).map(function (n) { return n + (tr.ax || 0); })) : tr.ch, root0 = chordNotes(tr.sc, tr.root, deg, 0)[0] + (tr.ax || 0);
+    if (first) tr.ax = peak && !tr.bridge && !tr.leaving && bar % 2 && tr.r() < clamp(IPH * Math.pow(PHI, 2 * (tr.dm ? tr.dm.tension : 1 / 2) - 1), 0, 1) ? AXIS[Math.floor(tr.r() * AXIS.length)] : 0;
+    var dyn = 1; if (tr.node) try { dyn = tr.node.out(pumpAt(t)); } catch (e) {}      // mix: routed pump-tree dynamics (around 1)
+    var bx = tr.bx, bs = null; if (bx && t >= bx.start - dur16 / 2) bs = t >= bx.drop - dur16 / 2 ? bx.home : bx.segs[clamp(Math.floor((t - bx.start + dur16 / 2) / bx.bar), 0, bx.segs.length - 1)];   // the bridge owns the harmony
+    if (bs && bs !== tr.bxSeg) { tr.bxSeg = bs; first = true; tr.ch = voicePcs(tr, bs.pcs); }
+    var ch = bs ? tr.ch : first || !tr.ch ? (tr.ch = voiced(tr, deg).map(function (n) { return n + (tr.ax || 0); })) : tr.ch, root0 = bs ? nearRoot(tr, bs.root) : chordNotes(tr.sc, tr.root, deg, 0)[0] + (tr.ax || 0);
     // chords
     if (g.chords === 'pad' && first) ch.forEach(function (n) { pl('chords', INST.pad, tr.L.pad, n + 12, t, barLen, 1); });
     if ((g.chords === 'strum' || g.chords === 'stab' || g.chords === 'ep') && g.steps.indexOf(s16) >= 0)
       ch.forEach(function (n, k) { var inst = (g.chords === 'ep' ? INST.ep : g.chords === 'stab' ? INST.stab : null) || INST.pluck; pl('chords', inst, tr, n + 12, t + (g.chords === 'strum' ? k * dur16 * Math.pow(PHI, -4) : 0), dur16 * (g.chords === 'ep' ? 5 : 2), vl(s16, dyn)); });   // phi: strum spread PHI^-4 of a sixteenth
     if (g.chords === 'arp' && s16 % 2 === 0) { var an = ch.concat([ch[0] + 12]); pl('chords', INST.piano || INST.pluck, tr, an[(s16 / 2) % an.length] + 12, t, dur16 * 2, vl(s16, dyn)); }
-    if (g.arp && INST.square) { var a2 = ch.concat([ch[0] + 12, ch[1] + 12]); pl('chords', INST.square, tr.x, a2[s16 % a2.length] + 24, t, dur16 * 0.8, 0.45); }
+    if (g.arp && INST.square) { var a2 = ch.concat([ch[0] + 12, ch[1] + 12]), cb = chipNote(tr, t); pl('chords', cb ? INST.square : INST.pluck, tr.x, a2[s16 % a2.length] + 24, t, dur16 * (cb ? IPH * IPH : IPH), cb ? 0.45 : IPH * IPH); }   // phi: blips short, the plucked ones a little longer and softer
     if (g.ost && s16 % 2 === 0 && INST.stab) pl('chords', INST.stab, tr.x, ch[s16 % 4 === 0 ? 0 : 2] + 12, t, dur16 * 1.6, 0.7);
     // bass
     var bn = root0 - 12;
@@ -328,7 +392,7 @@
     if (g.bass === 'octave' && s16 % 2 === 0) pl('bass', INST.bass, tr.L.bass, bn + (s16 % 4 ? 12 : 0), t, dur16 * 1.5, vl(s16, dyn));
     // melody (Dad's tune): motif from the seed, a note shifted now and then
     var md = tr.mel[st % tr.mel.length]; if (md != null) md += rise; var lsc = tr.bd ? (g.scale === 'lydian' || tr.genre === 'cinematic' ? COLOUR.whole : g.scale === 'major' ? COLOUR.penta : COLOUR.penta_m) : tr.sc, ln = lsc.length;
-    if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; pl('lead', INST[g.lead], tr.L.lead, tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12, t, dur16 * (g.lead === 'horn' || g.lead === 'bell' ? 6 : 2), 0.8); }
+    if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; var li = g.lead === 'square' && !chipNote(tr, t) ? (INST.reed || INST.pluck) : INST[g.lead]; pl('lead', li, tr.L.lead, tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12, t, dur16 * (g.lead === 'horn' || g.lead === 'bell' ? 6 : 2), 0.8); }
     // drums
     if (X && X.hit && peak && (tr.dr || g).kick && K332.indexOf(s16) >= 0) { var kv = vl(s16, dyn); X.hit(tr.L.drums, 'kick', t, kv); rec('drums', GM.kick, t, dur16, kv * gAt(tr, t)); }   // 3+3+2 kick at the peak
     if (X && X.hit && fill && ((tr.dr || g).snare || (tr.dr || g).tom) && s16 >= 16 - SPB) { var fv = Math.pow(PHI, -(16 - s16)) * PHI * (dyn || 1), fk = s16 % 2 ? 'snare' : 'tom'; X.hit(tr.L.drums, fk, t, fv); rec('drums', GM[fk], t, dur16, fv * gAt(tr, t)); }   // phi: fill rising a rung per sixteenth on the last beat
@@ -350,6 +414,17 @@
 
   // ---------- scheduler (look-ahead) ----------
   var tracks = [], sched = 0;
+  // ONE CLOCK (MIDI Bot pump-mapping sweep #1): a single timer every PHI^-6 s (inside the PHI^-4 s look-ahead) runs the scheduler and,
+  // as phases on it, every periodic job of the DJ (panel paint, loudness ref, beat LED, js/dj-fx.js knobs, rolls and CC log, needles).
+  var JOBS = [], clk = 0;
+  function every(fn, ms) { var j = { fn: fn, ms: ms, due: Date.now() + ms }; JOBS.push(j); if (!clk) clk = setInterval(oneClock, Math.pow(PHI, -6) * MS); return j; }   // phi: the clock period
+  function never(j) { if (j) j.off = true; }
+  function oneClock() {
+    var now = Date.now(); if (sched) tick();
+    for (var i = 0; i < JOBS.length; i++) { var j = JOBS[i]; if (j.off) { JOBS.splice(i--, 1); continue; } if (now >= j.due) { j.due = Math.max(j.due + j.ms, now); try { j.fn(); } catch (e) {} } }
+    while (LED.length && LED[0][0] <= now) { var x = LED.shift(); if (led) { if (x[1] < 0) led.classList.remove('on', 'on2'); else led.classList.add(x[1] ? 'on2' : 'on'); } }
+  }
+  var LED = [];                                                           // beat-LED flashes on the clock: [wall ms, 1 downbeat / 0 beat / -1 off]
   function tick() {
     if (!ctx) return;
     var horizon = ctx.currentTime + Math.pow(PHI, document.hidden ? 3 : -4);   // phi: look PHI^-4 s ahead, PHI^3 s while hidden (throttled timers)
@@ -367,8 +442,10 @@
   // ---------- the DJ ----------
   var playing = false, cur = null, fadingUntil = 0, clock = 0, T0 = Date.now(), lastMood = null, genreFlip = 0, setBm = false;
   function startTrack(c, fade, sp, ox) {
-    var gs = c.genres, genre = sp && GEN[sp.genre] ? sp.genre : gs[(genreFlip++) % gs.length], t = Math.max(ox && ox.at || 0, ctx.currentTime + Math.pow(PHI, -6));   // phi: fade starts PHI^-6 s out (or at the transition's drop)
-    var tr = makeTrack(genre, sp && sp.bpm > 0 ? sp.bpm : c.bpm, sp && isFinite(sp.seed) ? sp.seed : (Math.random() * SEEDS) | 0);
+    var pre = !sp && ox && ox.pre && GEN[ox.pre.genre] ? ox.pre : null;   // the bridge already chose the next genre, seed and key
+    var gs = c.genres, genre = sp && GEN[sp.genre] ? sp.genre : pre ? (genreFlip++, pre.genre) : gs[(genreFlip++) % gs.length], t = Math.max(ox && ox.at || 0, ctx.currentTime + Math.pow(PHI, -6));   // phi: fade starts PHI^-6 s out (or at the transition's drop)
+    var prev = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0];
+    var tr = makeTrack(genre, sp && sp.bpm > 0 ? sp.bpm : c.bpm, sp && isFinite(sp.seed) ? sp.seed : pre ? pre.seed : (Math.random() * SEEDS) | 0, prev, sp ? sp.root : pre ? pre.root : null);
     if (sp) { tr.born = sp.born; tr.step = stepsIn((Date.now() - sp.born) / MS, tr.bpm); }
     if (ox && ox.at) { tr.next = t; if (!sp) tr.born = Date.now() + (t - ctx.currentTime) * MS; }   // the new track's first bar (and its arc) lands on the drop   // pick up the arrangement where wall-clock time has it
     var old = tracks.filter(function (x) { return !x.dead && !x.leaving; }), len = fade || c.fade;
@@ -386,15 +463,51 @@
   // through the same bar-grid planner as the shuffle button (js/dj-fx.js transition(), its sweeps scaled by depth); before the effects
   // chain has loaded, the change waits for the live track's next bar line. The outgoing track stops taking axis substitutes once a change
   // is planned (tr.bridge), and the incoming track voices its first chord from the outgoing track's last one (lastCh, see voiced()).
-  var pendX = false;
+  var pendX = false, lastBx = null;
+  // THE BRIDGE (MIDI Bot transitions design #3: pivot / dominant / home). When a change is planned, the next track's genre, seed, key and
+  // first chord are drawn at once (pre), so over the bars to the drop the outgoing track plays a chord both keys share (preferring ii, IV,
+  // vi of the new key), then the dominant seventh of the landing chord, and after the drop the landing chord itself while it fades.
+  // One bar, or no shared chord: the landing chord's tones the old key also has, held as a pedal (common-tone modulation).
+  // cite: common chord / pivot modulation, common-tone modulation, dominant seventh resolution
+  // (en.wikipedia.org/wiki/Common_chord_(music), /Modulation_(music), /Dominant_seventh_chord)
+  function pc(n) { return ((n % 12) + 12) % 12; }                          // unit: 12 pitch classes
+  function nearRoot(tr, p) { var r = tr.root + pc(p - tr.root); return r - tr.root > 6 ? r - 12 : r; }   // unit: nearest within a half octave
+  function voicePcs(tr, pcs) {                                            // each pitch class at the octave nearest the last chord's centre
+    var ref = tr.lastCh && tr.lastCh.length ? tr.lastCh.reduce(function (a, b) { return a + b; }, 0) / tr.lastCh.length : tr.root + 7;   // unit: a fifth above the root
+    var q = pcs.length ? pcs.slice() : [pc(tr.root)]; while (q.length < 3) q.push(q[q.length % (pcs.length || 1)]);   // unit: a triad's 3 voices (a 1-2 tone pedal doubles its tones, so the parts that index ch[2] never read undefined)
+    var out = []; q.forEach(function (p) { var n = ref + pc(p - ref); if (n - ref > 6) n -= 12; while (out.indexOf(n) >= 0) n += 12; out.push(n); });   // unit: half octave; doubled tones go an octave up
+    return (tr.lastCh = out.sort(function (a, b) { return a - b; }));
+  }
+  function preProg(genre, seed) { var r = rng(seed), g = GEN[genre]; r(); return g.progs[Math.floor(r() * g.progs.length)]; }   // makeTrack's own draw order
+  function preNext(live, mix) {
+    var c = compute(), gs = c.genres, fl = genreFlip + (mix != null ? Math.floor(withKnobs(genome(mix)).flip * SPB) : 0), genre = gs[fl % gs.length], g = GEN[genre];
+    var seed = (Math.random() * SEEDS) | 0, root = live && live.sc ? travel(SCALES[g.scale], g.root, live, frac(seed * IPH)) : g.root;
+    return { genre: genre, seed: seed, root: root, prog: preProg(genre, seed) };
+  }
+  function planBridge(live, pre, start, drop) {
+    if (!live || !pre) return; var SCn = SCALES[GEN[pre.genre].scale], dur = SPM / live.bpm * SPB * live.g.bars;   // unit: a bar of the live track
+    var home = chordNotes(SCn, pre.root, pre.prog[0], 0), hr = pc(home[0]), old = live.sc.map(function (x) { return pc(live.root + x); });
+    var tri = function (d) { return chordNotes(SCn, pre.root, d, 0).map(pc); }, inOld = function (ps) { return ps.every(function (p) { return old.indexOf(p) >= 0; }); };
+    var piv = null; [1, 3, 5, 0, 4, 2].some(function (d) { var t = tri(d); if (inOld(t) && pc(t[0]) !== hr) { piv = { pcs: t, root: t[0] }; return true; } return false; });   // unit: scale degrees ii, IV, vi, I, V, iii
+    var V7 = { pcs: [7, 11, 2, 5].map(function (x) { return pc(hr + x); }), root: pc(hr + 7) };   // cite: dominant seventh on the fifth above the landing root
+    var ped = home.map(pc).filter(function (p) { return old.indexOf(p) >= 0; }); if (!ped.length) ped = [hr];
+    var n = Math.max(0, Math.round((drop - start) / dur)), segs = !piv || n < 2 ? [{ pcs: ped, root: ped[0] }] : [];
+    for (var i = 0; piv && n >= 2 && i < n; i++) segs.push(i < n - 1 ? piv : V7);
+    lastBx = live.bx = { start: start, drop: drop, bar: dur, segs: segs, home: { pcs: home.map(pc), root: hr }, pre: pre, plan: segs.map(function (x) { return x === piv ? 'pivot' : x === V7 ? 'V7' : 'pedal'; }) };
+  }
+  // LANDING WAIT (owner 16:30 'adjusted depending on mood, time of day ... they all sweep'): how long an automatic change takes to land,
+  // 0 = the next bar .. 1 = a phrase (dj-fx BARS 1..8), from calm pumps and sophistication: calm, sophisticated tracks take their time.
+  function waitAuto() { var tr = tracks.filter(function (x) { return !x.leaving && !x.dead; })[0], u = energy(), s = tr && tr.s != null ? tr.s : IPH;
+    return clamp(IPH * (1 - u) + IPH * IPH * s, 0, 1); }
   function routed(fn, live) {
     live = live || tracks.filter(function (x) { return !x.leaving && !x.dead; })[0]; if (!live || !playing || !ctx) return false;
-    var F = window.DadAutoDJ && DadAutoDJ.fx, go = function (ox) { if (!pendX || !playing) return; pendX = false; fn(ox); };
+    var F = window.DadAutoDJ && DadAutoDJ.fx, pre = preNext(live), go = function (ox) { if (!pendX || !playing) return; pendX = false; ox = ox || {}; ox.pre = pre; fn(ox); };
     pendX = true; live.bridge = true;
-    if (F && F.transition && F.transition(go, { depth: depthAuto() })) return true;
+    if (F && F.transition && F.transition(go, { depth: depthAuto(), wait: waitAuto() })) { var L = F.lastTransition; if (L) planBridge(live, pre, L.start, L.drop); return true; }
     var G = grid(); if (!G) { pendX = false; return false; }
     var S16 = SPB * SPB, k = Math.ceil(G.step / S16) * S16, at = G.t + (k - G.step) * G.d16;
     while (at < ctx.currentTime + Math.pow(PHI, -2)) { at += G.d16 * S16; }   // phi: the next bar line at least PHI^-2 s out
+    planBridge(live, pre, at, at);
     setTimeout(function () { go({ at: at, fade: Math.max(G.d16 * S16, compute().fade * IPH), swap: true }); }, Math.max(0, (at - ctx.currentTime - Math.pow(PHI, -2)) * MS));   // phi: a bar or PHI^-1 of the mood's fade
     return true;
   }
@@ -421,7 +534,7 @@
   var pend = null, stalled = false, held = null, GA = 0x9E3779B9, SEEDS = 4294967296;   // phi: golden-ratio hash (2^32 / PHI) steps the seed per skipped track; unit: 2^32 seeds
   function stepsIn(sec, bpm) { return Math.max(0, Math.floor(sec * bpm / SPM * SPB)); }
   function spec() { var tr = tracks.filter(function (x) { return !x.leaving && !x.dead; })[0];
-    return tr ? { genre: tr.genre, bpm: tr.bpm, seed: tr.seed, born: tr.born, len: tr.trackLen } : (pend || held); }
+    return tr ? { genre: tr.genre, bpm: tr.bpm, seed: tr.seed, born: tr.born, len: tr.trackLen, root: tr.root } : (pend || held); }
   function advance(sp, c) {                                               // whole track lengths that passed while away, then the remainder
     if (!sp || !(sp.len > 0) || !isFinite(sp.born)) return null;
     var age = (Date.now() - sp.born) / MS; if (age < sp.len) return sp;
@@ -437,7 +550,7 @@
     var tr = startTrack(c, PHI, sp); tr.trackLen = sp && sp.len > 0 ? sp.len : c.trackLen; cur = c; cur.genre = tr.genre;   // first tap: a quick PHI^1 s fade-in (crossfades use PHI^(3.5+s))
     elPlay(); session('playing'); save(); clearTimeout(idleT);
     setTimeout(function () { loadX(); loadFX(); }, Math.pow(PHI, 2) * MS);                              // phi: extras after the first sound has begun (PHI^2 s)
-    if (!sched) sched = setInterval(tick, 25); tick();
+    if (!sched) { sched = 1; every(function () {}, SPM * MS); } tick();   // the scheduler rides the one clock
     if (!document.documentElement.hasAttribute('data-bm')) { document.documentElement.setAttribute('data-bm', 'playing'); setBm = true; }  // the generated cue layer ducks to 30% under the music
     paint(c); schedule(c.fade);
   }
@@ -491,7 +604,8 @@
   // runs the sweeps, and calls back just before the drop; the new track starts ON the drop with the style's fade and a bass swap.
   function mixGo() {
     var s = mixSeed == null ? Math.floor(Date.now() / MS) : mixSeed + 1, F = window.DadAutoDJ && DadAutoDJ.fx;
-    if (playing && ctx && F && F.transition) { if (F.transition(function (ox) { remix(s, ox); })) { if (mixBtn) { mixBtn.classList.remove('is-mixing'); void mixBtn.offsetWidth; mixBtn.classList.add('is-mixing'); } return; } }
+    var live = tracks.filter(function (x) { return !x.leaving && !x.dead; })[0], pre = live ? preNext(live, s) : null;
+    if (playing && ctx && F && F.transition) { if (F.transition(function (ox) { if (ox && pre) ox.pre = pre; remix(s, ox); })) { if (live) { live.bridge = true; var L = F.lastTransition; if (L) planBridge(live, pre, L.start, L.drop); } if (mixBtn) { mixBtn.classList.remove('is-mixing'); void mixBtn.offsetWidth; mixBtn.classList.add('is-mixing'); } return; } }
     remix(s);
   }
   var mixBtn = null;
@@ -515,11 +629,12 @@
   // register with js/rhythm-continuity.js (save cadence, lifecycle hooks, catch-up and the daily restart live there)
   var RC = null;
   function save() { if (RC) RC.save(); }
-  function snapshot() { return { on: playing || !!pend || stalled, nudge: nudge, flip: genreFlip, T0: T0, tr: spec(), mix: mixSeed, k: kRef, ks: kseed }; }
+  function snapshot() { var o = { on: playing || !!pend || stalled, nudge: nudge, flip: genreFlip, T0: T0, tr: spec(), mix: mixSeed, k: kRef, ks: kseed }; if (JSON.stringify(sign) !== JSON.stringify(SIGN0)) o.sg = sign; return o; }
   function catchUp(e, s, mode) {
     if (mode === 'return') { wake(); return; }
     if (!s) return;
-    if (s.k > 0 && isFinite(s.k)) kRef = s.k;                             // learned level per unit of nominal volume (a calibration, kept)
+    if (s.k > 0 && isFinite(s.k)) kRef = s.k;
+    if (s.sg) Object.keys(sign).forEach(function (k) { var a = s.sg[k]; if (a && a.length === DIMS.length && a.every(function (v) { return v === -1 || v === 0 || v === 1; })) sign[k] = a.slice(); });   // the signs dial is a choice: it carries                             // learned level per unit of nominal volume (a calibration, kept)
     if (s.ks) Object.keys(KP).forEach(function (k) { if (isFinite(s.ks[k])) kseed[k] = s.ks[k]; });   // knob seeds are choices: they carry like the mix
     if (s.mix != null && isFinite(s.mix)) mixSeed = s.mix; M = withKnobs(genome(mixSeed));   // his mix choice carries through reloads and the daily restart
     if (mode === 'restart') { if (s.on && AC) { pend = {}; arm(); } return; }   // new solar day: still on (his choice), fresh track, knobs back to live
@@ -537,13 +652,13 @@
   var $ = function (id) { return document.getElementById(id); };
   var btn, vol, read, readP, led, chips;
   function sliderVol() { var v = vol ? +vol.value : +(store(K_VOL) || 80); return clamp(isFinite(v) ? v : 80, 0, 100) / 100; }
-  function sgn(v) { return (v > 0 ? '+' : v < 0 ? '\u2212' : '\u00B1') + Math.abs(v); }
+  function sgn(v) { return (v > 0 ? '+' : v < 0 ? '\u2212' : '\u00B1') + +Math.abs(v).toFixed(2); }
   function paint(c) {
     if (!read) return;
     var shown = playing && cur ? cur : c, g = playing && cur && cur.genre ? cur.genre : c.genres.join(' / ');
     read.textContent = mixName() + ' \u00B7 ' + g + ' \u00B7 ' + Math.round(shown.bpm) + ' BPM \u00B7 fade ' + shown.fade.toFixed(1) + ' s \u00B7 vol ' + Math.round(shown.vol * 100) + '%';
-    var p = c.p, pendN = playing && cur && (Math.abs(cur.s - c.s) > Number.EPSILON || cur.p.mood !== c.p.mood);
-    readP.textContent = 's ' + sgn(c.s) + ' = time ' + p.time + ' ' + sgn(p.tp) + ', sky ' + p.sky + ' ' + sgn(p.wp) + ', ' + p.urgency + ' ' + sgn(p.up) + ', ' + p.mood + ' ' + sgn(p.mp) +
+    var p = c.p, pendN = playing && cur && (Math.abs(cur.s - c.s) > Math.pow(PHI, -4) || cur.p.mood !== c.p.mood);
+    readP.textContent = 's ' + sgn(c.s) + ' = time ' + p.time + ' ' + sgn(p.tp) + ', sky ' + p.sky + ' ' + sgn(p.wp) + ', ' + p.urgency + ' ' + sgn(p.up) + ', ' + p.mood + ' ' + sgn(p.mp) + ' \u00B7 ' + DIMS.map(function (d) { return d + ' ' + c.dims[d].toFixed(2); }).join(', ') +
       (pendN ? ' \u2192 next: ' + c.genres.join('/') + ' ' + Math.round(c.bpm) + ' BPM in ' + Math.max(0, nextIn()).toFixed(1) + ' s' : '') + liveLine();
     var on = playing || !!pend || stalled, wait = !!pend || stalled;
     btn.setAttribute('aria-pressed', on ? 'true' : 'false'); btn.classList.toggle('is-resuming', wait);
@@ -555,9 +670,8 @@
   var beatT = [];
   function beat(t, down) {
     if (RM.matches || !led || !ctx) return;
-    var ms = Math.max(0, (t - ctx.currentTime) * 1000);
-    beatT.push(setTimeout(function () { led.classList.add(down ? 'on2' : 'on'); setTimeout(function () { led.classList.remove('on', 'on2'); }, 90); }, ms));
-    if (beatT.length > 64) beatT.splice(0, 32);
+    var at = Date.now() + Math.max(0, (t - ctx.currentTime) * 1000);
+    LED.push([at, down ? 1 : 0], [at + 90, -1]); LED.sort(function (a, b) { return a[0] - b[0]; }); if (LED.length > 64) LED.splice(0, 32);
   }
   function soundSwitch() { return document.querySelector('#vol-sound .bs-toggle'); }
   function masterOn() { var b = window.BaseSound; return !b || b.on; }
@@ -587,7 +701,7 @@
     cur = compute(); paint(cur); schedule(cur.fade);
     var dm = document.querySelector('.dad-dj .dj-demo'); if (dm) dm.addEventListener('toggle', function () { if (dm.open) loadX(); });
     if (window.LoadTiers) LoadTiers.add(3, loadX, 'dj extras', { id: 'dj' });
-    setInterval(function () { if (!document.hidden) paint(compute()); }, 1000);
+    every(function () { if (!document.hidden) paint(compute()); }, 1000);
   }
   // ---------- page-music level for the logos (owner 14:23 + 14:26 AWST 26 Oct; js/logo-sound.js trimmer) ----------
   function rmsOf(m) { if (!m) return 0; var a = new Float32Array(m.fftSize); m.getFloatTimeDomainData(a); var q = 0; for (var i = 0; i < a.length; i++) q += a[i] * a[i]; return Math.sqrt(q / a.length); }
@@ -608,7 +722,7 @@
   }
   function duckTo(on) { ducked = !!on; if (duck) duck.gain.setTargetAtTime(on ? IPH : 1, ctx.currentTime, on ? IPH * IPH : IPH); }   // rule 6: down tau PHI^-2 s, up tau PHI^-1 s
   window.PageMusic = { ref: ref, duck: duckTo, get ducked() { return ducked; } };
-  setInterval(function () { if (playing && !document.hidden) ref(); }, PHI * MS);   // phi: keep learning k every PHI s while the music plays
+  every(function () { if (playing && !document.hidden) ref(); }, PHI * MS);   // phi: keep learning k every PHI s while the music plays
   // ---------- export button: the last minute as a Standard MIDI File (writer js/dj-midi.js loads on first press) ----------
   var MIDIURL = 'js/dj-midi.js?v=midifix1', midiP = null;
   function midiLib() { if (!midiP) midiP = new Promise(function (ok, no) { if (window.DadMidi) return ok(window.DadMidi); var sc = document.createElement('script'); sc.src = MIDIURL; sc.async = true;
@@ -625,10 +739,12 @@
       midiLib().then(function (L) { L.save(ev, bpm, cur && cur.genre, TL.slice()); }).catch(function () {}); });
   }
   function grid() { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return tr && tr.ga ? { t: tr.ga[0], step: tr.ga[1], d16: SPM / tr.bpm / SPB, bpm: tr.bpm } : null; }
-  window.DadAutoDJ = { _kit: { grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
+  window.DadAutoDJ = { _kit: { dimX: function (w) { return dimX(w); }, dimsOf: dimsOf, every: every, never: never, wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
       INST: INST, get ctx() { return ctx; }, LADDER: LADDER, eff: eff, liveOf: liveOf, nudge: nudge, setTo: setTo, compute: compute, paint: paint, save: save,
       idle: function (c) { if (!playing) cur = c; }, get el() { return el; }, get duck() { return duck; }, wake: function () { wake(); }, resumeTap: function () { resumeTap(); }, rebuild: function () { return rebuild(); }, get stalled() { return stalled; }, recCC: recCC, mixGo: function () { mixGo(); }, get voices() { return nlive; }, soph: soph, pwave: pwave, set sOver(v) { sOver = v; }, get sOver() { return sOver; } },
-    compute: compute, pumps: pumps, GEN: Object.keys(GEN), set: function (k, v) { if (LADDER[k]) setTo(k, v); paint(compute()); save(); },
+    compute: compute, pumps: pumps, streams: streams, get dims() { return dimsOf(dimX(null)); }, get signs() { return JSON.parse(JSON.stringify(sign)); },
+    sign: function (k, d, v) { var i = DIMS.indexOf(d); if (sign[k] && i >= 0 && (v === -1 || v === 0 || v === 1)) { sign[k][i] = v; paint(compute()); save(); } return sign[k] ? sign[k].slice() : null; },   // the signs dial (taste calls) GEN: Object.keys(GEN), set: function (k, v) { if (LADDER[k]) setTo(k, v); paint(compute()); save(); },
+    get harmonyBridge() { return lastBx ? { plan: lastBx.plan, segs: lastBx.segs, home: lastBx.home, pre: lastBx.pre, start: lastBx.start, drop: lastBx.drop } : null; },
     get nudge() { return JSON.parse(JSON.stringify(nudge)); }, live: function (k) { return liveOf(k); }, get pending() { return !!pend || stalled; },
     get track() { var t = spec(); return t ? { genre: t.genre, bpm: t.bpm, born: t.born, len: t.len, step: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).step, arc: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).e, breakdown: !!(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).bd, soph: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).s } : null; },
     get mix() { return { seed: mixSeed, name: mixName(), genome: M }; }, remix: function (seed) { if (seed === undefined) nextMix(); else remix(seed); },

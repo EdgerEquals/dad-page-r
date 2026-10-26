@@ -57,15 +57,17 @@
   function energy() {                                                     // pump energy u in (0,1): excited, urgent, hot and day push it up
     var p = D.pumps(); return 1 / (1 + Math.pow(PHI, p.tp + p.wp + p.up + p.mp));
   }
-  // CROSS-MODULATION (owner 15:14): each effect hears the top-panel pumps through its own phi-weighted coupling (PHI^-1..PHI^1 per pump),
-  // so mood, urgency, sky and time move every effect differently; the coupling glides (tau PHI s, rule 6). A tiny 🎲 per effect re-rolls
-  // its rung and its coupling weights. The effects feed back a little: their smoothed mean (back(), tau PHI^2 s) leans the chain level
+  // CROSS-MODULATION (owner 15:14; data layer, MIDI Bot pump-mapping sweep #2): each effect follows its own dimension of the start engine's
+  // data layer (roll and the auto transition style: drive; filter: brightness; echo and wash: space; crush: drive x tension), heard
+  // through the effect's own coupling weights per knob group (1 = as the music hears it; a tiny 🎲 re-rolls them PHI^-1..PHI^1), and the
+  // coupling glides (tau PHI s, rule 6). The effects feed back a little: their smoothed mean (back(), tau PHI^2 s) leans the chain level
   // down by up to PHI^-2 rungs and sways the pump-knob needles.
-  var PKS = ['tp', 'wp', 'up', 'mp'], CW0 = { roll: [-1, -1, 1, 1], filter: [1, 1, -1, -1], echo: [-1, 0, 0, 1], wash: [1, 1, -1, 0], crush: [-1, -1, 1, 0], trans: [1, 0, 1, -1] };   // unit: default coupling rung per pump (-1 = PHI^-1, 0 = 1, 1 = PHI)
+  var PKS = ['tp', 'wp', 'up', 'mp'], DIM = { roll: ['drive'], filter: ['brightness'], echo: ['space'], wash: ['space'], crush: ['drive', 'tension'], trans: ['drive'] };
   var wseed = {}, uk = {}, bk = 0, T0FX = c.currentTime;               // T0FX: the engine's own PHI^2 s fade-in owns the level until then
-  function cw(k) { var sd = wseed[k]; return PKS.map(function (x, j) { return Math.pow(PHI, sd == null ? CW0[k][j] : 2 * frac((sd * PKS.length + j) * IPH) - 1); }); }
-  function uOf(k, dt) {                                                   // this effect's own pump energy, damped
-    var p = D.pumps(), w = cw(k), z = 0; PKS.forEach(function (x, j) { z += w[j] * p[x]; }); var tgt = 1 / (1 + Math.pow(PHI, z));
+  function cw(k) { var sd = wseed[k]; return PKS.map(function (x, j) { return sd == null ? 1 : Math.pow(PHI, 2 * frac((sd * PKS.length + j) * IPH) - 1); }); }
+  function uOf(k, dt) {                                                   // this effect's own dimension (0..1), damped
+    var tgt = 1; if (K.dimX) { var X = K.dimX(cw(k)); DIM[k].forEach(function (d) { tgt *= 1 / (1 + Math.pow(PHI, -X[d])); }); } else tgt = energy();
+    if (k === 'wash') tgt = 1 - tgt;                                      // wash = (1 - u): more space, more wash
     uk[k] = uk[k] == null ? tgt : uk[k] + (tgt - uk[k]) * (1 - Math.exp(-(dt || IPH) / PHI)); return uk[k];
   }
   function back() { return bk; }
@@ -91,7 +93,7 @@
     return { v: j ? clamp(f.L[j] * (f.L[li] ? v / f.L[li] : 1), 0, 1) : 0, i: j, li: li };
   }
   // ---------- apply (every PHI^-1 s, everything glides) ----------
-  var E = {}, bits = 0;
+  var E = {}, bits = 0, PAD = null, padFl = false;                       // PAD: the logo Kaoss pad's offsets (js/logo-pad.js), null at rest
   function crushCurve(b) {
     var n = Math.pow(2, Math.round(Math.pow(PHI, 5))), a = new Float32Array(n), q = Math.pow(2, b - 1);   // phi: 2^11 curve points
     for (var i = 0; i < n; i++) { var x = 2 * i / (n - 1) - 1; a[i] = Math.round(x * q) / q; } return a;
@@ -99,7 +101,10 @@
   function apply(tau) {
     irReady(); FX.forEach(function (f) { uOf(f.k); }); var u = energy(), bpm = (D.track && D.track.bpm) || D.compute().bpm, beat = SPM / bpm;
     FX.forEach(function (f) { E[f.k] = effOf(f, u); });
-    if (c.currentTime < TXu) { sync(); return; }                         // a transition owns the sweeps until its tail is done
+    if (c.currentTime < TXu) { sync(); return; }                         // (the logo pad waits too)
+    if (PAD) { E.filter.v = clamp(E.filter.v + PAD.filter, -1, 1); ['echo', 'wash', 'crush'].forEach(function (k) { E[k].v = clamp(E[k].v + PAD[k], 0, 1); }); }   // logo pad: on top of the pumped values
+    if (PAD || padFl) { var fb = bpm / SPM; padFl = !!PAD;                 // logo pad flanger: sweep at the beat rate x PHI^-3 .. x PHI^-2 with distance; silent at rest
+      to(flW.gain, PAD ? PAD.flw * IPH * IPH : 0, tau); to(flFb.gain, PAD ? PAD.flw * IPH : 0, tau); to(flL.frequency, PAD ? fb * Math.pow(PHI, PAD.r - 3) : 0, tau); }                         // a transition owns the sweeps until its tail is done
     var fv = E.filter.v, span = Math.log(FHI / FLO);
     to(lp.frequency, FHI * Math.exp(-span * IPH * Math.max(0, -fv)), tau); to(hp.frequency, FLO * Math.exp(span * IPH * Math.max(0, fv)), tau);
     var e = E.echo.v, dT = beat / 2, now = c.currentTime, q = Math.pow(PHI, -6);
@@ -109,7 +114,8 @@
     }
     to(eSend.gain, e, tau); eFb.gain.setTargetAtTime(e * IPH, now + q * PHI * PHI, tau || IPH);
     to(wSend.gain, wConv.buffer ? E.wash.v * IPH : 0, tau);
-    var cr = E.crush.v, b = cr ? Math.round(Math.pow(PHI, 4) * (1 - cr)) + SPB : 0;   // phi: gentle bit depth, PHI^4 rungs above 4 bits
+    var cr = E.crush.v * (K.chip ? K.chip() : 1), b = cr ?   // bit-crush rides the chip share (owner 16:53)
+       Math.round(Math.pow(PHI, 4) * (1 - cr)) + SPB : 0;   // phi: gentle bit depth, PHI^4 rungs above 4 bits
     if (b && b !== bits) { bits = b; shp.curve = crushCurve(b); }
     to(cWet.gain, cr * IPH * IPH, tau); to(cDry.gain, 1 - cr * Math.pow(PHI, -3), tau);   // phi: gentle, at most PHI^-2 wet
     var m = (E.echo.v + E.wash.v + E.crush.v + Math.abs(E.filter.v) + (E.roll.v ? IPH : 0)) / R2N(); bk += (m - bk) * (1 - Math.exp(-IPH / (PHI * PHI)));   // phi: tau PHI^2 s
@@ -165,7 +171,7 @@
   function transition(go, o) {
     var G = K.grid && K.grid(); if (!G || !D.playing || txBusy) return false;
     var st = E.trans ? E.trans.v : AUTO[0], S = STY[st] || STY[1], S16 = SPB * SPB, d16 = G.d16, bar = d16 * S16, beat = d16 * SPB, now = c.currentTime;   // unit: sixteenths per bar
-    var u = energy(), ri = clamp(S.r + Math.round((u - 1 / 2) * IPH * PHI), 0, BARS.length - 1), nB = BARS[ri];   // pump nudge of up to a rung
+    var u = energy(), ri = clamp((o && o.wait != null ? Math.round(o.wait * (BARS.length - 1)) : S.r) + Math.round((u - 1 / 2) * IPH * PHI), 0, BARS.length - 1), nB = BARS[ri];   // automatic changes: the landing-wait dial picks the rung   // pump nudge of up to a rung
     var k = Math.ceil(G.step / S16) * S16, ts = G.t + (k - G.step) * d16; while (ts < now + Math.pow(PHI, -2)) { ts += bar; k += S16; }   // phi: the next bar line at least PHI^-2 s out
     var bs = k / S16, bd = bs + nB; if (nB >= SPB - 1 && bd % SPB) bd += SPB - bd % SPB;   // long ones land on a phrase line (SPB bars)
     var dp = o && o.depth != null ? clamp(o.depth, 0, 1) : 1, wt0 = wt; wt = function (S, k) { return wt0(S, k) * dp; };   // automatic changes: sweeps scaled by the pumped depth
@@ -192,13 +198,14 @@
     setTimeout(function () { go({ at: td, fade: fade, swap: true, style: S.n }); }, Math.max(0, (td - c.currentTime - Math.pow(PHI, -2)) * MS));   // phi: hand over PHI^-2 s before the drop
     setTimeout(function () { txBusy = false; }, (td - c.currentTime + tail) * MS);
     // CC log for the export: brightness (LP up, HP down), flanger wet, wash, sampled on the sixteenth grid from now to the tail
-    var R = K.recCC, span = Math.log(FHI / FLO); clearInterval(txLog);
+    var R = K.recCC, span = Math.log(FHI / FLO); if (txLog && txLog.fn && K.never) K.never(txLog); else clearInterval(txLog);
     var q = '';
     function ccNow() { var x = (Math.log(lp.frequency.value / FLO) - Math.log(hp.frequency.value / FLO)) / span, v = [x, flW.gain.value * PHI, wSend.gain.value * PHI];   // unit: GM brightness, chorus/flanger depth, reverb send
       R(74, v[0]); R(93, v[1]); R(91, v[2]); var k = v.map(function (y) { return Math.round(clamp(y, 0, 1) * 127); }).join(), same = k === q; q = k; return same; }   // unit: 7-bit CC steps (settled = no step changed)
     // MIDI Bot review: the values before the sweep are logged at the call, and logging runs on past the hand-back (TXu) until the knobs
     // have settled again (a beat after apply() takes over), so the file ends at the resting brightness and sends, not mid-tail
-    if (R) { ccNow(); txLog = setInterval(function () { var st = ccNow(); if ((st && c.currentTime > TXu + beat) || c.currentTime > TXu + PHI * PHI * PHI) clearInterval(txLog); }, d16 * MS); }   // phi: give up PHI^3 s after the hand-back
+    if (R) { ccNow(); var stopLog = function () { if (K.never) K.never(txLog); else clearInterval(txLog); }, logIt = function () { var st = ccNow(); if ((st && c.currentTime > TXu + beat) || c.currentTime > TXu + PHI * PHI * PHI) stopLog(); };
+      txLog = K.every ? K.every(logIt, d16 * MS) : setInterval(logIt, d16 * MS); }   // phi: give up PHI^3 s after the hand-back
     } finally { wt = wt0; }
     sync(); return true;
   }
@@ -275,10 +282,13 @@
     reset: function () { FX.forEach(function (f) { nudge[f.k] = 0; }); apply(); } });   // daily restart: knobs back to live, the effects seed stays
   // ---------- in ----------
   apply(); K.fx({ inp: inp, out: out });                                  // the start engine crossfades dry -> this chain over PHI^2 s
-  setInterval(function () { if (!document.hidden) apply(); }, IPH * MS);   // phi: knobs follow the live pumps every PHI^-1 s
-  setInterval(rollTick, Math.pow(PHI, -4) * MS);                          // phi: roll look-ahead every PHI^-4 s
+  var EV = K.every || setInterval;                                        // phases on the one clock (core), else timers
+  EV(function () { if (!document.hidden) apply(); }, IPH * MS);   // phi: knobs follow the live pumps every PHI^-1 s
+  EV(rollTick, Math.pow(PHI, -4) * MS);                          // phi: roll look-ahead every PHI^-4 s
   build();
   D.fx = { get eff() { return JSON.parse(JSON.stringify(E)); }, get nudge() { return JSON.parse(JSON.stringify(nudge)); }, get seed() { return seed; }, get rolls() { return rolls; }, back: back, get u() { return JSON.parse(JSON.stringify(uk)); }, reroll: function (k) { FX.forEach(function (f) { if (f.k === k) reroll(f); }); }, get scatter() { return { base: RB, trigHz: TRG, widthHz: TRG * PHI, ampHz: lfo.frequency.value, amp: rAmp.gain.value, lastDiv: lastF }; },
     random: function (s) { draw(s === undefined ? (seed == null ? Math.floor(Date.now() / MS) : seed + 1) : s); },
-    set: function (k, i) { FX.forEach(function (f) { if (f.k === k) nudge[k] = f.kind === 'pick' ? i : i - liveIdx(f, energy()); }); apply(); save(); }, energy: energy, transition: transition, get lastTransition() { return lastTx; } };
+    set: function (k, i) { FX.forEach(function (f) { if (f.k === k) nudge[k] = f.kind === 'pick' ? i : i - liveIdx(f, energy()); }); apply(); save(); }, energy: energy, transition: transition,
+    pad: function (m) { PAD = m ? { filter: +m.filter || 0, echo: +m.echo || 0, wash: +m.wash || 0, crush: +m.crush || 0, flw: +m.flw || 0, r: +m.r || 0 } : null; apply(PAD ? Math.pow(PHI, -4) : IPH); },   // phi: pad glides tau PHI^-4 s, release glides home tau PHI^-1 s
+    get padding() { return PAD ? JSON.parse(JSON.stringify(PAD)) : null; }, get lastTransition() { return lastTx; } };
 })();
