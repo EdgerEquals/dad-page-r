@@ -198,7 +198,7 @@ window.QUIZ_COPY = {
   place: "Perth"
 };
 
-/* Header ticker + Sim terminal facts come from facts.json (sourced, verified, filtered by the age dial). */
+/* Header ticker + terminal facts come from facts.json (sourced, verified, filtered by the age dial). */
 </script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;700&family=Gochi+Hand&family=Kaushan+Script&family=Lora:wght@500&display=swap" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;700&family=Gochi+Hand&family=Kaushan+Script&family=Lora:wght@500&display=swap" media="print" onload="this.media='all'"></noscript><!-- web fonts no longer block first paint (owner t713u: lighter load) -->
 <link rel="stylesheet" href="css/dad-palette.css?v=2">
@@ -323,7 +323,6 @@ textarea{width:100%;min-height:90px;font:inherit;font-size:1.05rem;border:2px so
 .ttybar i{width:6px;height:6px;border-radius:50%;background:#F4B6B6}.ttybar i:nth-child(2){background:#F6E3A1}.ttybar i:nth-child(3){background:#3D7BFF}
 .ttybar .tt{flex:1;text-align:center}.ttybar .sat{font-size:9px}
 .ttybody{display:flex;align-items:center;gap:7px;padding:3px 7px 4px 5px}
-.ttybody .sim{--sz:30px}
 .ttyl{flex:1;min-width:0;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#5B8FFF;text-align:left}
 .ttyl .pr{color:var(--dad-amber)}
 .tout{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.35em}
@@ -333,14 +332,12 @@ textarea{width:100%;min-height:90px;font:inherit;font-size:1.05rem;border:2px so
 .tin .blk{position:absolute;left:var(--cx,0);top:50%;width:.6em;height:1.1em;margin-top:-.55em;background:#5B8FFF;animation:cblink var(--phi-cursor) steps(1) var(--phi-cursor-d) infinite;pointer-events:none}
 @keyframes cblink{50%{opacity:0}}
 .tin:focus-within{box-shadow:0 1px 0 0 var(--dad-amber)}
-.sim.talk{animation:sTalk var(--phi-cloud-bob) ease-in-out infinite}
-@keyframes sTalk{0%,100%{transform:translateY(0)}50%{transform:translateY(-8%)}}
 .foot .note{display:flex;align-items:center;justify-content:center;gap:6px;font-weight:700;font-size:.78rem;white-space:nowrap}
 .foot .note .dot{opacity:.6}
 .foot .fcr{font-size:.85rem}
-body.paused .foot .lt i,body.paused .tin .blk,body.paused .sim.talk{animation-play-state:paused}
+body.paused .foot .lt i,body.paused .tin .blk{animation-play-state:paused}
 @media(max-width:400px){.foot .note{font-size:.7rem;gap:4px}.foot .strip{gap:6px;font-size:9px}}
-@media(prefers-reduced-motion:reduce){.foot .lt i,.tin .blk,.sim.talk,.foot .lt.blip i{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.foot .lt i,.tin .blk,.foot .lt.blip i{animation:none!important}}
 [hidden]{display:none!important}
 
 /* see ticker block below */
@@ -406,24 +403,6 @@ body.paused .beacon i,body.paused .beacon i::after{animation-play-state:paused}
 .tout .ts{color:#C79A55}
 body.paused .lane *{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){.lane{display:none}.row1 .lane{display:none}}
-/* ---- Sim avatar (PREVIEW ONLY): brown cloud traced from Fast app avatar. Fill #8C6640, eyes #1E1E1E (sampled).
-   Gentle: breathing squash/stretch 4s, tiny lobe wobble, soft sheen sweep ~every 7s, blink every 5-8s, hop on each new step.
-   transform/opacity only; paused when the tab is hidden; completely still under prefers-reduced-motion. ---- */
-.sim{display:inline-block;flex:0 0 auto;width:var(--sz,56px);height:calc(var(--sz,56px)*.878);line-height:0;filter:drop-shadow(0 0 5px rgba(246,235,217,.16))}
-.sim svg{display:block;width:100%;height:100%;overflow:visible}
-.sim .s-body{transform-box:fill-box;transform-origin:50% 100%;animation:sBreathe var(--phi-cloud-breathe) ease-in-out var(--phi-cloud-breathe-d) infinite}
-.sim .lobe{transform-box:fill-box;transform-origin:50% 50%;animation:sWob calc(var(--phi-cloud-wobble) / 2) ease-in-out var(--wl,0s) infinite alternate}
-.sim .s-eyes{transform-box:fill-box;transform-origin:50% 50%}
-.sim.blink .s-eyes{animation:sBlink .15s ease-in-out 1}
-.sim .s-sheen{opacity:0;animation:sSheen var(--phi-cloud-shine) ease-in-out var(--phi-cloud-shine-d) infinite}
-.sim.hop{animation:sHop .5s cubic-bezier(.3,.7,.4,1) 1}
-@keyframes sBreathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.04,1.03)}}
-@keyframes sWob{from{transform:scale(1)}to{transform:scale(1.018)}}
-@keyframes sBlink{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.12)}}
-@keyframes sSheen{0%{transform:translateX(-70px);opacity:0}6%{opacity:1}26%{transform:translateX(250px);opacity:1}30%,100%{transform:translateX(250px);opacity:0}}
-@keyframes sHop{0%{transform:translateY(0) scale(1,1)}30%{transform:translateY(-22%) scale(.96,1.05)}62%{transform:translateY(0) scale(1.05,.95)}100%{transform:translateY(0) scale(1,1)}}
-body.paused .sim,body.paused .sim *{animation-play-state:paused!important}
-@media(prefers-reduced-motion:reduce){.sim,.sim *{animation:none!important}.sim .s-sheen{opacity:0}}
 .leadrow{display:flex;align-items:center;justify-content:center;gap:.8rem;max-width:560px;margin:0 auto 1.6rem}
 .leadrow .lead{margin:0;text-align:left}
 /* ---- Dad palette for the "from Dad" parts (css/dad-palette.css); Base pastel tiles and themed backgrounds stay ---- */
@@ -503,12 +482,12 @@ body.paused .home-code::before{animation-play-state:paused}
 <link rel="stylesheet" href="css/quiz-dj-pill.css?v=djexp1"><!-- Dad's DJ pill + pop-up (owner 11:06 AWST 24 Oct) -->
 <link rel="stylesheet" href="css/dj-buttons.css?v=1"><!-- music button (Base music-note button, Dad's palette) + DJ button family (owner 15:27 AWST 26 Oct) -->
 <link rel="stylesheet" href="css/quiz-space-sweep.css?v=orbitvis1" media="print" onload="this.media='all'"><!-- slow space orbit layer, middle band (owner 13:01-13:03 AWST 24 Oct, t626u/t628u/t629u) -->
-<link rel="stylesheet" href="css/quiz-term-status.css?v=pillfit4"><!-- terminal status pill + matrix terminal colours + footer sim$ light (owner 13:18 AWST 24 Oct, t637u-t639u) -->
+<link rel="stylesheet" href="css/quiz-term-status.css?v=pillfit4"><!-- terminal status pill + matrix terminal colours + footer prompt$ light (owner 13:18 AWST 24 Oct, t637u-t639u) -->
 <link rel="stylesheet" href="css/quiz-head-row.css?v=1"><!-- header row: weather right in portrait, ticker in the middle in landscape (owner 13:26 AWST 24 Oct, t646u) -->
 <script>LoadTiers.script("js/quiz-term-status.js?v=pillpulse7",2,{id:"tty",w:6.4})</script>
 <link rel="stylesheet" href="css/quiz-front-orbit.css?v=edgefix1" media="print" onload="this.media='all'"><!-- front orbit emojis over the greeting + scroll fade of both orbit layers (owner 13:22-13:24 AWST 24 Oct, t641u-t644u) -->
 <link rel="stylesheet" href="css/quiz-popups.css?v=1" media="print" onload="this.media='all'"><!-- pop-up panels for every tappable item in the page chrome (owner t660u 13:43 AWST 24 Oct) -->
-<link rel="stylesheet" href="css/quiz-tty-detail.css?v=1"><!-- Sim tty detail back: bright dots, amber timestamps, dashed teal top rule, amber AWST · AGE (owner 25 Oct 12:26 AWST) -->
+<link rel="stylesheet" href="css/quiz-tty-detail.css?v=1"><!-- tty detail back: bright dots, amber timestamps, dashed teal top rule, amber AWST · AGE (owner 25 Oct 12:26 AWST) -->
 <link rel="stylesheet" href="css/dad-mark-zoom.css?v=4"><link rel="stylesheet" href="css/dad-mark-waves.css?v=1"><!-- radiating, reflecting waves around Dad's mark (owner t719u) --><!-- tap-to-enlarge for Dad's mark (owner t699u) and the Remote logo (t701u), 25 Oct -->
 <link rel="stylesheet" href="css/quiz-light.css?v=2"><!-- light theme + footer theme switch (owner t0u 25 Oct); every light rule is scoped to html[data-theme="light"] -->
 <!-- load order (owner 11:55 AWST 26 Oct): web-font CSS and the decoration-only sheets (footer-light glow, space/front orbit layers, pop-ups, tide strip)
@@ -569,10 +548,9 @@ body.paused .home-code::before{animation-play-state:paused}
   <div class="tty" id="tty">
     <div class="ttybar"><i aria-hidden="true"></i><i aria-hidden="true"></i><i aria-hidden="true"></i><span class="tt" aria-hidden="true"></span></div><a class="dls" id="dls" href="dials.html" aria-label="Dial sandbox" title="Dial sandbox">&phi;</a><!-- dial sandbox, opens dials.html on tap only (owner via Studio 22:07 AWST 25 Oct) --><button type="button" class="thm" id="thm" aria-pressed="false" aria-label="Light theme" title="Switch to light theme"><span class="sat" aria-hidden="true">&#x1F6F0;&#xFE0F;</span><i class="thm-o" aria-hidden="true"></i></button><!-- theme switch: the satellite moved out of the bar into its own button (owner t0u) --><!-- t709u: dots -> live bar graphs + rolling readout, title text removed (js/quiz-tty2.js) -->
     <div class="ttybody">
-      <span class="sim" data-sim id="footSim"></span>
       <div class="ttyl">
         <div class="tout" id="tout"><div class="lp" id="tprev" aria-hidden="true"></div><div class="lc" id="tcur" aria-live="polite"></div></div>
-        <label class="tin"><span class="pr">sim<b class="dl">$</b></span><span class="sr">Type to Sim (preview, nothing is sent)</span><span class="tfield"><input id="tinp" type="text" autocomplete="off" spellcheck="false" maxlength="140"><span class="blk" aria-hidden="true"></span></span></label>
+        <label class="tin"><span class="pr"><span id="tpr"></span><b class="dl">$</b></span><span class="sr">Type here (preview, nothing is sent)</span><span class="tfield"><input id="tinp" type="text" autocomplete="off" spellcheck="false" maxlength="140"><span class="blk" aria-hidden="true"></span></span></label>
       </div>
     </div>
   </div>
@@ -681,25 +659,8 @@ body.paused .home-code::before{animation-play-state:paused}
     clearTimeout(clearT); clearT=setTimeout(function(){if(!old.classList.contains('on'))old.innerHTML='';},900);
   }
 
-  // ---- Sim avatar (decorative motion, labelled "Sim" for screen readers) ----
-  var SIM_LOBES=[[56.3,116.7,45.4],[73.2,73.7,60.7],[135.3,86.8,51.3],[96.7,105.1,56.2],[112.4,53.7,43.1]];
-  var SIM_EYES=[[102.1,65.4,18,42],[138.9,55.5,16.5,42]]; // cx, cy, width, length; tilted 27deg
-  var simN=0,reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
-  function simSVG(){
-    var id='simClip'+(++simN),c='',k='';
-    SIM_LOBES.forEach(function(l,i){c+='<circle class="lobe" style="--wl:-'+(window.PhiTiming.s('cloud-wobble')/2*(((window.PhiTiming.info('cloud-wobble').k+i)*0.6180339887)%1)).toFixed(3)+'s" cx="'+l[0]+'" cy="'+l[1]+'" r="'+l[2]+'"/>';k+='<circle cx="'+l[0]+'" cy="'+l[1]+'" r="'+l[2]+'"/>';});
-    var e='';SIM_EYES.forEach(function(q){e+='<rect x="'+(q[0]-q[2]/2)+'" y="'+(q[1]-q[3]/2)+'" width="'+q[2]+'" height="'+q[3]+'" rx="'+q[2]/2+'" transform="rotate(-27 '+q[0]+' '+q[1]+')"/>';});
-    return '<svg viewBox="0 0 196 172" aria-hidden="true" focusable="false"><defs><clipPath id="'+id+'">'+k+'</clipPath>'+
-      '<linearGradient id="'+id+'g" x1="0" x2="1"><stop offset="0" stop-color="#F6EBD9" stop-opacity="0"/><stop offset=".5" stop-color="#F6EBD9" stop-opacity=".22"/><stop offset="1" stop-color="#F6EBD9" stop-opacity="0"/></linearGradient></defs>'+
-      '<g class="s-body"><g fill="#8C6640">'+c+'</g><g clip-path="url(#'+id+')"><rect class="s-sheen" x="-10" y="-40" width="56" height="260" fill="url(#'+id+'g)" transform-origin="0 0" style="transform-box:view-box"/></g>'+
-      '<g class="s-eyes" fill="#1E1E1E">'+e+'</g></g></svg>';
-  }
-  Array.prototype.forEach.call(document.querySelectorAll('[data-sim]'),function(el){el.setAttribute('role','img');el.setAttribute('aria-label','Sim');el.innerHTML=simSVG();});
-  function simBlinkLoop(){setTimeout(function(){
-    if(!document.hidden&&!reduce)Array.prototype.forEach.call(document.querySelectorAll('.sim'),function(el){if(el.offsetParent===null&&!el.closest('.foot'))return;el.classList.remove('blink');void el.getBoundingClientRect();el.classList.add('blink');setTimeout(function(){el.classList.remove('blink');},200);});
-    },0);}
-  window.PhiTiming.every('cloud-blink',simBlinkLoop);   // Fast eyes blink every PHI^2.5 = 3.33 s (was 5-8 s random)
-  function simHop(){if(reduce||document.hidden)return;var el=$('footSim');el.classList.remove('hop');void el.getBoundingClientRect();el.classList.add('hop');}
+  var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var PR=(window.SITE_NAME||'').toLowerCase();var tprEl=document.getElementById('tpr');if(tprEl)tprEl.textContent=PR;   // terminal prompt: SITE_NAME lowercased (e.g. edgar$)
   document.addEventListener('visibilitychange',function(){document.body.classList.toggle('paused',document.hidden);});
 
 
@@ -868,36 +829,36 @@ body.paused .home-code::before{animation-play-state:paused}
   document.addEventListener('simwx',function(){SIM_LIGHTS();});
   setInterval(function(){if(!document.hidden)readout();},15000);
 
-  // ---- Sim terminal + MISSION LOG (display only: nothing is sent; typed text is never logged) ----
+  // ---- terminal + MISSION LOG (display only: nothing is sent; typed text is never logged) ----
   var MLOG=(function(){
-    var prev=$('tprev'),cur=$('tcur'),inp=$('tinp'),blk=document.querySelector('.tin .blk'),sim=$('footSim');
+    var prev=$('tprev'),cur=$('tcur'),inp=$('tinp'),blk=document.querySelector('.tin .blk');
     var SPIN=['\u280B','\u2819','\u2839','\u2838','\u283C','\u2834','\u2826','\u2827','\u2807','\u280F'];
     var REPLIES=['got it. (preview only, not sent)','thanks. this is just a preview, so nothing went anywhere.','noted. in the real version, '+(window.SITE_NAME||'')+' would see this.','understood. preview mode, so it stays on this page.'];
     var IDLE=['all quiet on deck.','steady as she goes.','take your time.','proud of you.','no rush. pick whatever feels right.'];
     var q=[],busy=false,typing=null,lastAt=Date.now(),beat=0,factN=0,holdUntil=0;
     function hms(){try{return new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:'Australia/Perth'});}catch(e){return '';}}
-    function html(l){return l.kind==='sim'?'<span class="pr">sim&gt;</span> ':'<span class="ts">'+l.t+'</span> ';}
+    function html(l){return l.kind==='say'?'<span class="pr">'+PR+'&gt;</span> ':'<span class="ts">'+l.t+'</span> ';}
     function show(l,done){
       prev.innerHTML=cur.innerHTML;cur.classList.toggle('wrap',l.text.length>44);prev.style.opacity=l.text.length>44?0:'';
       var head=html(l);clearInterval(typing);
       if(reduce){cur.innerHTML=head+esc(l.text);setTimeout(done,window.PhiTiming.ms('tty-hold-multi'));return;}
-      var i=0;sim.classList.add('talk');cur.innerHTML=head;var span=document.createElement('span');cur.appendChild(span);
-      typing=setInterval(function(){if(document.hidden)return;i++;span.textContent=l.text.slice(0,i);if(i>=l.text.length){clearInterval(typing);sim.classList.remove('talk');setTimeout(done,Math.max(window.PhiTiming.ms('tty-hold-multi'),l.hold||0));}},26);
+      var i=0;cur.innerHTML=head;var span=document.createElement('span');cur.appendChild(span);
+      typing=setInterval(function(){if(document.hidden)return;i++;span.textContent=l.text.slice(0,i);if(i>=l.text.length){clearInterval(typing);setTimeout(done,Math.max(window.PhiTiming.ms('tty-hold-multi'),l.hold||0));}},26);
     }
     function pump(){
       if(busy||!q.length||document.hidden)return; busy=true;var l=q.shift();
       show(l,function(){busy=false;lastAt=Date.now();pump();});
     }
     function log(text){q.push({kind:'log',t:hms(),text:text});if(q.length>8)q.splice(0,q.length-8);pump();}
-    function say(text,hold){q.push({kind:'sim',text:text,hold:hold});pump();}
+    function say(text,hold){q.push({kind:'say',text:text,hold:hold});pump();}
     // talk box: Enter clears, spinner ~1.5 s, then a canned reply typed out (jumps the queue)
     function measure(){var c=document.createElement('canvas').getContext('2d');c.font=getComputedStyle(inp).font;var k=(inp.offsetWidth&&inp.getBoundingClientRect().width/inp.offsetWidth)||1;blk.style.setProperty('--cx',Math.min(c.measureText(inp.value).width*k,inp.clientWidth*k-8)+'px');} /* k: iOS draws the 16px input at .75 (quiz-foot-lock.css) */
     inp.addEventListener('input',measure);
     inp.addEventListener('keydown',function(e){
       if(e.key!=='Enter')return;e.preventDefault();var v=inp.value.trim();inp.value='';measure();if(!v)return;
       clearInterval(typing);busy=true;var f=0;prev.innerHTML=cur.innerHTML;cur.classList.remove('wrap');
-      if(reduce){cur.innerHTML='<span class="pr">sim&gt;</span> \u2026';}else{sim.classList.add('talk');typing=setInterval(function(){cur.innerHTML='<span class="pr">sim&gt;</span> '+SPIN[f++%SPIN.length];},90);}
-      setTimeout(function(){clearInterval(typing);show({kind:'sim',text:REPLIES[Math.floor(Math.random()*REPLIES.length)]},function(){busy=false;holdUntil=Date.now()+30000;lastAt=Date.now();pump();});},1500);
+      if(reduce){cur.innerHTML='<span class="pr">'+PR+'&gt;</span> \u2026';}else{typing=setInterval(function(){cur.innerHTML='<span class="pr">'+PR+'&gt;</span> '+SPIN[f++%SPIN.length];},90);}
+      setTimeout(function(){clearInterval(typing);show({kind:'say',text:REPLIES[Math.floor(Math.random()*REPLIES.length)]},function(){busy=false;holdUntil=Date.now()+30000;lastAt=Date.now();pump();});},1500);
     });
     function factLine(){var fs=window.SIM_FACTS?window.SIM_FACTS(window.SIM_AGE()):[];if(!fs.length)return null;var i=(factN++*7)%fs.length,f=fs[i];return {n:BANK.indexOf(f)+1,f:f};}
     function report(){
@@ -918,7 +879,7 @@ body.paused .home-code::before{animation-play-state:paused}
       if(beat%4===3){var pool=IDLE.slice();say(pool[beat%pool.length]);return;}
       log('\u00B7 all systems nominal');
     },1000);
-    cur.innerHTML='<span class="pr">sim&gt;</span> hello.';
+    cur.innerHTML='<span class="pr">'+PR+'&gt;</span> hello.';
     return {log:log,say:say};
   })();
   window.MLOG_READY=true;
@@ -1004,7 +965,7 @@ body.paused .home-code::before{animation-play-state:paused}
     Array.prototype.forEach.call($('notes').children,function(li,i){li.textContent='\u2709\uFE0F '+s.notes[i];});
     $('back').disabled=$('back2').disabled=(qi===0);
     theme(s.theme);
-    if(qi!==simLastQ){simLastQ=qi;simHop();}
+    if(qi!==simLastQ){simLastQ=qi;}
     SIM_LIGHTS();
   }
   function next(){if(qi<state.length-1){qi++;render();}else summary();}

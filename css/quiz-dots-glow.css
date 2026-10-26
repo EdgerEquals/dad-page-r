@@ -1,5 +1,5 @@
 /* LIVE (owner 12:39 AWST 24 Oct "push it all"; was previews/questionnaire-held/): travelling glow on the four footer dots left of / above the Sim avatar
-   (STEP / DONE / SKY / LINK status lights in the .foot row directly above the sim tty). owner 24 Oct 2026 10:42 AWST: a soft light walks dot 1->2->3->4, then back 4->3->2->1, looping
+   (STEP / DONE / SKY / LINK status lights in the .foot row directly above the tty). owner 24 Oct 2026 10:42 AWST: a soft light walks dot 1->2->3->4, then back 4->3->2->1, looping
    (ping-pong, like a signal bouncing). It sits on a ::after halo, so each dot's own colour/animation underneath is untouched.
    Colour: the page's own palette via --dg-c = var(--dpc-accent) = Dad's command-centre accent from dad-head.css (now #0AF2FF), so it follows the palette job.
    Timing (/home/box/.config/phi-timing-rules.md): Sim terminal element, Base slot "offering story" PHI^6 17.94 s x PHI^-1.5

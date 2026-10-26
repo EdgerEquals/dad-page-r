@@ -89,7 +89,7 @@
       go: function () { var b = $('dj-pill'); if (b) b.click(); } },
     { k: 'sky', t: 'Sky over Perth', s: '\u2026', p: '<span class="m" aria-hidden="true">\uD83C\uDF15</span><span class="w" aria-hidden="true"></span>',
       go: function () { pop('#wx'); } },
-    { k: 'gc', t: 'Ground control', s: 'sim$ listening', p: '',
+    { k: 'gc', t: 'Ground control', s: (root.SITE_NAME||'').toLowerCase() + '$ listening', p: '',
       go: function () { pop('.foot .tout'); } },
     { k: 'rb', t: 'Site pulse', s: '<b>\u2026</b>', p: '<svg class="hw-hb" viewBox="0 0 200 50" preserveAspectRatio="none" aria-hidden="true">' +
         '<path class="b" d="M0 25H60l8-16 10 32 8-24 6 8H200"/><path pathLength="200" d="M0 25H60l8-16 10 32 8-24 6 8H200"/></svg>',
@@ -164,7 +164,7 @@
     set('sky', NAMES[ph] + (wt ? ' \u00b7 ' + wt.replace(/^Perth\s*/, '') : ''));
     // Ground control: type the newest tty line out
     var g = txt($('tcur'));
-    if (g && g !== lastGc) { lastGc = g; typeOut(el.gc.querySelector('.hw-p'), g); set('gc', 'sim$ ' + (txt($('tprev')) || 'listening')); }
+    if (g && g !== lastGc) { lastGc = g; typeOut(el.gc.querySelector('.hw-p'), g); set('gc', (root.SITE_NAME||'').toLowerCase() + '$ ' + (txt($('tprev')) || 'listening')); }
     // Remote
     var bc = $('beacon'), cls = bc ? (bc.classList.contains('live') ? 'live' : bc.classList.contains('down') ? 'down' : 'chk') : 'chk';
     el.rb.classList.remove('live', 'chk', 'down'); el.rb.classList.add(cls);

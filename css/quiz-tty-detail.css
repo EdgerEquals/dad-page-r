@@ -1,7 +1,7 @@
 /* Questionnaire footer: detail back in the Sim tty (owner 25 Oct 2026 12:26 AWST, "fix both"), within Dad's palette.
    Restores what 68d38b5 / a95c128 (24 Oct) flattened: bright window dots with soft glows, amber timestamps, a clear
    prompt > message > timestamp hierarchy (older line dimmer but readable), the 2px dashed teal top rule and the amber
-   AWST · AGE readout. Colours/sizes only: no layout, so the panel height is unchanged. Kept as is: sim$ prompt,
+   AWST · AGE readout. Colours/sizes only: no layout, so the panel height is unchanged. Kept as is: prompt$ prompt,
    the matrix green/red status pill and the synced green cursors (never red), and the foot-line quote cycle. */
 .foot{border-top:2px dashed #2A8FA3}
 .foot .ttybar i{background:#F4B6B6;box-shadow:0 0 4px rgba(244,182,182,.6)}

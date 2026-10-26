@@ -1,10 +1,10 @@
 /* Questionnaire only (owner 13:18 AWST 24 Oct 2026, t637u/t638u/t639u, live, no preview).
    1) The header's "From Dad · age 13" tag (#ttag, phone + desktop) is hidden (element kept, its text no longer shown) and replaced by a
-      terminal-style status pill (#tstat): small monospace text like the sim$ prompt, cycling "status" <-> "live", with a breathing
+      terminal-style status pill (#tstat): small monospace text like the prompt$ prompt, cycling "status" <-> "live", with a breathing
       teal dot (Dad's accent #0AF2FF). Words are stacked in a fixed 6ch box, so swapping them never shifts the layout.
    2) Matrix terminal colours on the terminal elements only: matrix green #00FF41 for text + prompt, matrix red #FF0033 for accents
       (input-focus underline, text selection, and the footer cursor while the status reads "live"). Rest of Dad's palette unchanged.
-   3) Footer sim$ light (the block cursor after the prompt): pulses matrix green; turns matrix red while the pill reads "live".
+   3) Footer prompt$ light (the block cursor after the prompt): pulses matrix green; turns matrix red while the pill reads "live".
       Both follow html[data-term-status] set by js/quiz-term-status.js, so they flip together.
    Timing (phi rules; CSS animations are scaled by the ratio pump, Dad's dial 0.75): "status" pulse PHI^2 = 2.618 s; dot breath
    PHI^3.25 = 4.778 s; cursor blink unchanged (--phi-cursor, PHI^0.5 = 1.272 s); word cross-fade PHI^0.25 = 1.128 s / pump rate
@@ -37,14 +37,14 @@ html[data-term-status="live"] .tstat .ts-l{opacity:1}
 .foot .tin:focus-within{box-shadow:0 1px 0 0 var(--mx-r)}
 .foot .ttyl ::selection,.foot .tin input::selection{background:var(--mx-r);color:#000}
 
-/* ---- 3) footer sim$ light: green, red while the status reads "live" ---- */
+/* ---- 3) footer prompt$ light: green, red while the status reads "live" ---- */
 .foot .tin .blk{background:var(--mx-g);box-shadow:0 0 4px rgba(0,255,65,.6);transition:background-color var(--ts-xf) ease-in-out,box-shadow var(--ts-xf) ease-in-out}
 html[data-term-status="live"] .foot .tin .blk{background:var(--mx-r);box-shadow:0 0 5px rgba(255,0,51,.7)}
 
 body.paused .tstat .ts-dot,body.paused .tstat .ts-s i{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){.tstat .ts-dot,.tstat .ts-s i{animation:none!important}.tstat .ts-w b,.foot .tin .blk{transition:none!important}}
 
-/* ---- t650u (owner 13:32 AWST 24 Oct): pill inside reads like the footer sim$ line - monospace text + block cursor.
+/* ---- t650u (owner 13:32 AWST 24 Oct): pill inside reads like the footer prompt$ line - monospace text + block cursor.
    Sequence (js/quiz-term-status.js, html[data-term-phase]): cursor blinks x2 (PHI^0.5 each) -> "status" green, pulses x3 (PHI^2 each),
    cursor steady after it -> clear, cursor x2 -> "live" red, pulses x3 -> clear ... All / RatioPump rate. Fixed 7ch box, no shift.
    Quiet (offline / Remote link down): muted grey-green "away", dim static cursor, grey dot, no glow, nothing moves. ---- */

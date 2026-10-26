@@ -1,11 +1,11 @@
 /* Questionnaire terminal status pill (owner t637u/t639u; t647u/t648u/t650u 13:32 AWST 24 Oct 2026). Display only: sends nothing.
-   Pill renders a terminal line: text + block cursor, like the footer sim$ line.
+   Pill renders a terminal line: text + block cursor, like the footer prompt$ line.
    Sequence (phi rules, base seconds, advanced at RatioPump.rate(), dial 0.75):
      cursor  : no word, cursor blinks 2x with the footer cursor (cblink PHI^0.5 = 1.272 s, same clock) -> 2.544 s
      status  : "status" green, pulses at PHI^2 = 2.618 s for 6 footer blinks, steady cursor after it -> 7.633 s
      cursor  : 2.544 s
      live    : "live" red, 7.633 s ... full cycle 16 blinks = 20.35 base s. Clock = footer cursor animation currentTime (t651u).
-   html[data-term-phase]=cursor|status|live|quiet (pill); html[data-term-status]=status|live|quiet (footer sim$ light, holds the
+   html[data-term-phase]=cursor|status|live|quiet (pill); html[data-term-status]=status|live|quiet (footer prompt$ light, holds the
    last word through cursor phases) + 'termstatus:change'.
    Quiet: not actually live = navigator.onLine false OR the page's Remote link check window.SIM_BEACON.state==='down' -> muted
    static "away", no cycling. Resumes on recovery. Reduced motion: static "status" + steady cursor. */

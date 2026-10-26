@@ -186,7 +186,6 @@ html[data-theme="light"] .foot .ttyl .tin .pr,html[data-theme="light"] .foot .tt
 html[data-theme="light"] .foot .ttyl .tin .pr .dl{color:#C4002B;text-shadow:none}
 html[data-theme="light"] .foot .tin .blk{background:#0B7A2E;box-shadow:none}
 html[data-theme="light"][data-term-status="live"] .foot .tin .blk{background:#C4002B;box-shadow:none}
-html[data-theme="light"] .foot .ttybody .sim{filter:drop-shadow(0 1px 1px rgba(20,58,87,.25))}
 html[data-theme="light"] .foot .train{opacity:.5}
 html[data-theme="light"] .foot .train span{text-shadow:none}
 html[data-theme="light"] .foot .train em{color:#C4002B;text-shadow:none}

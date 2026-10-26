@@ -1,0 +1,3 @@
+# Approved removals (one line per approved removal; only lines new in a push count)
+# Old cloud avatar removed from the footer terminal (Danny 17:06 AWST 26 Oct 2026)
+site.html :: id:footSim

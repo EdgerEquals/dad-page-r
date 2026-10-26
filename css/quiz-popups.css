@@ -2,7 +2,7 @@
    status pill, weather, ticker, masthead, footer lights, critters, tide strip, sim tty) opens ONE floating panel over the
    layout instead of navigating, re-running or expanding inline. The panel is position:fixed and appended to <body>, so it never
    takes part in layout: no element anywhere changes width, height or position, and the page is not scroll-locked.
-   The questionnaire's own controls (Start, answer tiles, Reroll, Send/Skip/Back, the note box, the sim$ typing box) are
+   The questionnaire's own controls (Start, answer tiles, Reroll, Send/Skip/Back, the note box, the prompt$ typing box) are
    untouched. Dad's DJ keeps its own pop-up (already a panel). Dad's command-centre palette; terminal readouts in matrix green.
    Triggers only get cursor + a focus ring (outline, no box change). Reduced motion: no fade. */
 .qp-trig{cursor:pointer;-webkit-tap-highlight-color:rgba(10,242,255,.18)}

@@ -16,7 +16,7 @@
   //         emoji          target selector        tilt  travel  pulse  ellipse sizing  cx    cy    spin   dir
   var SET = [['\u2B50',      '#start .from',         -20, 8.125, 5.04, 'reachUp',       0.74, 0.27, 6.70,  1],    // star: tall sweep
              ['\uD83D\uDE80', '#start h1',             25, 8.375, 5.10, 'wide',          0.78, 0.25, 6.85, -1],    // rocket: wide sweep
-             ['\u2728',      '#start .sim',       -20, 8.625, 5.16, 'reachDown',     0.72, 0.30, 7.05,  1],    // sparkles: tall sweep
+             ['\u2728',      '#start',            -20, 8.625, 5.16, 'reachDown',     0.72, 0.30, 7.05,  1],    // sparkles: tall sweep
              ['\uD83C\uDF0D', '#start .leadrow',       25, 8.875, 5.22, 'row',           0.76, 0.28, 7.20, -1]];   // globe: medium sweep
   var GROW = 1.3;
   var head = document.getElementById('q-head'), foot = document.getElementById('foot') || document.querySelector('.foot');
