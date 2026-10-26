@@ -351,6 +351,7 @@ body.paused .foot .lt i,body.paused .tin .blk{animation-play-state:paused}
 .wxr{flex:0 0 auto;display:inline-flex;gap:2px;line-height:1}
 .fcr{flex:0 0 auto;display:inline-block;width:5.6em;overflow:hidden;line-height:1.2;white-space:nowrap;vertical-align:middle;-webkit-mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
 .fcr .ct{display:inline-flex;animation:fcr-scroll var(--phi-marquee) linear var(--phi-marquee-d) infinite}.fcr .ct>span{padding-right:.3em}
+.fcr .tw{position:relative;display:inline-block;width:1.2em;height:1.2em;vertical-align:-.2em;font-style:normal}.fcr .tw>b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:normal;animation:tw-a var(--tw-p,6.854s) ease-in-out infinite}.fcr .tw>b+b{animation-name:tw-b}.fcr .tw2>b{animation-name:tw-b}.fcr .tw2>b+b{animation-name:tw-a}.fcr .pu{width:1.1em;height:1.1em;display:block;filter:drop-shadow(0 0 .09em rgba(10,242,255,.618))}@keyframes tw-a{0%,38.2%{opacity:1}50%,88.2%{opacity:0}100%{opacity:1}}@keyframes tw-b{0%,38.2%{opacity:0}50%,88.2%{opacity:1}100%{opacity:0}}@media(prefers-reduced-motion:reduce){.fcr .tw>b{animation:none;opacity:1;position:static;display:inline-flex}.fcr .tw{width:auto}}  /* lanes swap 1: two-face critter slots, phi split (0.382 hold / 0.118 fade) */
 @keyframes fcr-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media(max-width:460px){.fcr{width:2.6em}}
 @media(prefers-reduced-motion:reduce){.fcr .ct{animation:none}}
@@ -739,7 +740,22 @@ body.paused .home-code::before{animation-play-state:paused}
     // cycle, no request), sets the order; the strip scrolls on the PHI^8 = 46.98 s marquee clock (--phi-marquee) and a new order
     // lands at the next loop boundary. Same source, epoch and loop as the Remote / dashboard / chat footers. Reduced motion: still.
     var el=$('fcr');if(!el)return;
-    var L=['\uD83E\uDD8A','\uD83D\uDC28','\uD83E\uDD98','\uD83D\uDC19','\uD83E\uDD8E','\uD83D\uDC1E','\uD83D\uDC38','\uD83E\uDD94','\uD83D\uDC0C','\uD83E\uDD89'],last=-1;
+    // Lanes swap 1 (Danny 17:20 AWST 26 Oct): slot 1 fox -> race car + motorbike, slot 2 koala -> motorbike + pin-up silhouette (two-face slots
+    // cross-fade on the fact period, opposite phases so the motorbike never shows twice at once), octopus -> space invader, ladybird -> spanner.
+    // Still 10 slots in the same order, so the Moon-phase rotation and the marquee clock are unchanged.
+    var PHI=(1+Math.sqrt(5))/2,CAR='\uD83C\uDFCE\uFE0F',MOTO='\uD83C\uDFCD\uFE0F';
+    function pinup(){ // tasteful pin-up silhouette, implied only: one flat shape, no detail. Curve emphasis + opacity ride DIAL_POLITE_DIRTY (0 polite .. 1 dirty).
+      var D=window.DIAL_POLITE_DIRTY||{},d=Math.max(0,Math.min(1,+D.value||0)),c=Math.pow(PHI,-2)+d*Math.pow(PHI,-1),f=function(n){return n.toFixed(2);};
+      var b=c*PHI,h=c*PHI*PHI/2;   // bust / hip swing, phi ratios of the dial
+      var body='M11.3 5.4L9.8 7Q'+f(9.6-b)+' 8.4 10.1 10Q10.6 11 10.8 12Q'+f(9.6-h)+' 14 10.2 16.4L10.9 22.6L10.2 23.4L11.9 23.4L12.1 17.6L12.6 17.4L14.4 19.6L13.6 23.2L15.1 23.4L15.6 19.4Q15.2 18 14.2 16.6Q'+f(14.6+h)+' 14 13.2 12Q13.4 11 13.9 10Q'+f(14.4+b)+' 8.4 14.2 7L12.7 5.4Z';
+      return '<svg class="pu" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="opacity:'+f(1/PHI+(1-1/PHI)*d)+'">'+
+        '<g fill="#143A57" stroke="#0AF2FF" stroke-width=".55" stroke-linejoin="round" stroke-linecap="round">'+
+        '<path d="M14.1 7.4L16.6 10.4L14.3 13.3" fill="none" stroke-width="1.15"/><path d="M14.1 7.4L16.6 10.4L14.3 13.3" fill="none" stroke="#1F5478" stroke-width=".5"/>'+
+        '<path d="M9.9 7.4L7.6 4.4L10.6 2.4" fill="none" stroke-width="1.15"/><path d="M9.9 7.4L7.6 4.4L10.6 2.4" fill="none" stroke="#1F5478" stroke-width=".5"/>'+
+        '<path d="'+body+'"/><circle cx="12" cy="3.3" r="2"/><path d="M13.2 1.6Q15.9 2.2 15.2 4.6Q14.8 5.8 13.7 5.2Q14.6 4 13.2 1.6Z"/></g></svg>';}
+    function two(a,b2,ph){return '<i class="tw'+(ph?' tw2':'')+'"><b>'+a+'</b><b>'+b2+'</b></i>';}
+    var L=[two(CAR,MOTO,0),two(MOTO,pinup(),0),'\uD83E\uDD98','\uD83D\uDC7E','\uD83E\uDD8E','\uD83D\uDD27','\uD83D\uDC38','\uD83E\uDD94','\uD83D\uDC0C','\uD83E\uDD89'],last=-1;
+    try{el.style.setProperty('--tw-p',(window.PhiTiming?window.PhiTiming.s('fact'):Math.pow(PHI,4)).toFixed(3)+'s');}catch(e){}
     function moon(){var a=((Date.now()-Date.UTC(2000,0,6,18,14))/864e5)%29.530588853;if(a<0)a+=29.530588853;return Math.floor(a/29.530588853*L.length);}
     el.innerHTML='<span class="ct"></span>';var tr=el.firstChild;
     function fill(){var m=moon();if(m===last)return;last=m;var row=L.slice(m).concat(L.slice(0,m)).join(' ')+' ';tr.innerHTML='<span>'+row+'</span><span>'+row+'</span>';}
