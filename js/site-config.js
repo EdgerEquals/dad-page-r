@@ -3,9 +3,9 @@
    Scripts read window.SITE_NAME (or the <html data-who> it sets). */
 window.SITE_NAME = 'Edgar';
 window.SITE_TITLE = 'R+ ' + window.SITE_NAME;
-/* Polite <-> Dirty dial: 0 = Polite, 1 = Dirty (continuous ratio; default 0.618 = phi ratio, leaning dirty; nothing reads it yet).
+/* Polite <-> Dirty dial: 0 = Polite, 1 = Dirty (continuous ratio; 0.764 = 0.618 + 0.382 x 0.382, one phi step dirtier than 0.618, Danny 26 Oct: "raise the taste style up a bit towards the dirty end". Read by js/character.js (opacity, stage dwell) and the site.html pin-up).
    Dirty max stays implied only: no explicit nudity at any setting. */
-window.DIAL_POLITE_DIRTY = { value: 0.618, min: 0, max: 1, labels: { 0: 'Polite', 1: 'Dirty' } };
+window.DIAL_POLITE_DIRTY = { value: 0.764, min: 0, max: 1, labels: { 0: 'Polite', 1: 'Dirty' } };
 (function (d) {
   var N = window.SITE_NAME, T = window.SITE_TITLE;
   d.title = T;   // set at once, so the locked gate page carries the title too
