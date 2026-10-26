@@ -25,7 +25,7 @@ window.CHARACTERS = {
     poster: 'media/hostess-poster.jpg',
     loop: { webm: 'media/hostess-loop.webm', mp4: 'media/hostess-loop.mp4' },
     aspect: 480 / 848,
-    v: 1,
+    v: 2,  // 2 = no-point loop (Danny 26 Oct: "I don't like it when you points so just drop that part")
     // no stage media yet (placeholders only, nothing is fetched while this is empty). Next girl's stages go here, e.g.:
     // { id: 'turn',  kind: 'clip',    webm: 'media/hostess-s1-turn.webm',  mp4: 'media/hostess-s1-turn.mp4',  dwell: 1.618, kb: 350 },
     // { id: 'strap', kind: 'clip',    webm: 'media/hostess-s2-strap.webm', mp4: 'media/hostess-s2-strap.mp4', dwell: 2.618, kb: 350 },
