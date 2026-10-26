@@ -1,3 +1,7 @@
 # Approved removals (one line per approved removal; only lines new in a push count)
 # Old cloud avatar removed from the footer terminal (Danny 17:06 AWST 26 Oct 2026)
 site.html :: id:footSim
+# Topic quiz theme layers removed from the home main area (Danny 17:45 AWST 26 Oct 2026: "get rid of any quizzes")
+site.html :: id:fxA
+# Second of the two quiz theme cross-fade layers (same approval)
+site.html :: id:fxB

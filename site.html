@@ -212,11 +212,6 @@ window.QUIZ_COPY = {
 html{-webkit-text-size-adjust:100%}/* no html background: the body's dark gradient must propagate to the canvas, or the body paints over the z<0 layers (video, rain, scene); the body rule is inline here, so it is dark from first paint anyway */.qs-layer,.es-layer{position:fixed;left:0;right:0;top:0;bottom:0;overflow:hidden;overflow:clip;pointer-events:none}.qf-layer{position:absolute;left:0;top:0;width:100%;overflow:hidden;overflow:clip;pointer-events:none}/* edgefix: scene layers are clipped from first paint, even if their print-swapped stylesheet lands after their script (no transient scroll height) *//* edgefix (owner 12:57 AWST 26 Oct): dark canvas from first paint, never a white strip */
 body{margin:0;min-height:100vh;min-height:100svh;font-family:var(--f-body);font-size:1.15rem;line-height:1.5;color:var(--ink);background:linear-gradient(180deg,var(--bg-top) 0,#0F2A33 38%,var(--bg) 100%) fixed var(--bg);overflow-x:hidden}
 body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;background:linear-gradient(180deg,var(--bg-top) 0,#0F2A33 38%,var(--bg) 100%),radial-gradient(ellipse at 80% 0,rgba(242,165,65,.10),transparent 55%)}
-/* Themed animated layers (decorative): two layers so a theme can cross-fade */
-.fx{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:0;transition:opacity .8s ease}
-.fx.on{opacity:1}
-.p{position:absolute;top:0;left:0;will-change:transform;font-size:var(--s,34px);line-height:1;opacity:var(--o,.6)}
-.p svg{display:block;width:var(--s,34px);height:var(--s,34px)}
 @keyframes fall{from{transform:translate3d(var(--x),-12vh,0) rotate(0)}to{transform:translate3d(calc(var(--x) + var(--dx)),112vh,0) rotate(var(--r))}}
 @keyframes rise{from{transform:translate3d(var(--x),110vh,0) scale(.8)}to{transform:translate3d(calc(var(--x) + var(--dx)),-14vh,0) scale(1.1)}}
 @keyframes floaty{0%,100%{transform:translate3d(var(--x),var(--y),0) rotate(-6deg)}50%{transform:translate3d(calc(var(--x) + var(--dx)),calc(var(--y) - 3vh),0) rotate(8deg)}}
@@ -226,20 +221,6 @@ body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;ba
 @keyframes spin{to{transform:translate3d(var(--x),var(--y),0) rotate(360deg)}}
 @keyframes bob{0%,100%{transform:translate3d(var(--x),var(--y),0)}50%{transform:translate3d(var(--x),calc(var(--y) - 6vh),0)}}
 @keyframes pulse{0%,100%{opacity:.12}50%{opacity:.32}}
-.m-fall{animation:fall var(--d,16s) linear var(--del,0s) infinite}
-.m-rise{animation:rise var(--d,16s) linear var(--del,0s) infinite}
-.m-float{animation:floaty var(--d,9s) ease-in-out var(--del,0s) infinite}
-.m-drift{animation:drift var(--d,28s) linear var(--del,0s) infinite}
-.m-twinkle{animation:twinkle var(--d,4s) ease-in-out var(--del,0s) infinite}
-.m-cross{animation:cross var(--d,14s) linear var(--del,0s) infinite}.m-ufo{animation:ufoP var(--d,14s) ease-in-out var(--del,0s) infinite,ufoW calc(1s*(1/2 + sqrt(5)/2)) ease-in-out infinite alternate}@keyframes ufoP{0%{translate:-25vw 60vh;opacity:0}8%{opacity:var(--o,.6)}25%{translate:12vw 44vh}50%{translate:50vw 30vh}60%{opacity:var(--o,.6)}75%,100%{translate:120vw 8vh;opacity:0}}@keyframes ufoW{from{rotate:calc(-1turn/55)}to{rotate:calc(1turn/55)}}/* UFO (owner 15:55): replaces the drifting comet; same diagonal as .m-cross, bowed through the 25/50% points; wobble 1/55 turn (Fibonacci) every PHI s */
-.m-spin{animation:spin var(--d,30s) linear infinite}
-.m-bob{animation:bob var(--d,3s) ease-in-out var(--del,0s) infinite}
-.maplines{position:absolute;inset:0;width:100%;height:100%;animation:pulse var(--phi-bg-pulse) ease-in-out var(--phi-bg-pulse-d) infinite}
-.paused .p,.paused .maplines{animation-play-state:paused}
-@media(prefers-reduced-motion:reduce){
-  .p,.maplines{animation:none!important;transform:translate3d(var(--x),var(--y,30vh),0)!important}
-  .fx{transition:none}
-}
 /* Rain layer: 4 big soft translucent streaks, transform-only, looping slowly */
 .rain{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
 .rain i{position:absolute;top:0;width:10px;height:46vh;border-radius:10px;background:linear-gradient(to bottom,rgba(214,236,239,0),rgba(214,236,239,.10) 70%,rgba(214,236,239,.18));
@@ -249,16 +230,6 @@ body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;ba
 .rain i:nth-child(3){left:66%;--del:calc(var(--phi-rain) * -.854)}.rain i:nth-child(4){left:88%;--del:calc(var(--phi-rain) * -.472);width:7px}
 @keyframes rain{from{transform:translate3d(0,-60vh,0) rotate(12deg)}to{transform:translate3d(-14vw,130vh,0) rotate(12deg)}}
 .paused .rain i{animation-play-state:paused}
-/* Sparkle burst on tiles: nothing at rest; short burst on hover (mouse) or tap */
-.tile{position:relative}
-.tile .sp{position:absolute;width:18px;height:18px;opacity:0;pointer-events:none;transform:scale(.2);
-  background:var(--dad-amber);clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%)}
-.tile .sp:nth-child(1){top:8%;left:10%}.tile .sp:nth-child(2){top:12%;right:10%;background:var(--dad-sand)}
-.tile .sp:nth-child(3){bottom:12%;left:16%;background:var(--dad-sand)}.tile .sp:nth-child(4){bottom:8%;right:14%}
-@keyframes spk{0%{opacity:0;transform:scale(.2) rotate(0)}40%{opacity:1;transform:scale(1.2) rotate(40deg)}100%{opacity:0;transform:scale(.4) rotate(90deg)}}
-@media(hover:hover){.tile:hover .sp{animation:spk .7s ease-out 1}}
-.tile.burst .sp{animation:spk .7s ease-out 1}
-.tile .sp:nth-child(2),.tile .sp:nth-child(3){animation-delay:.08s!important}
 /* Layout */
 .wrap{max-width:860px;margin:0 auto;padding:1rem 18px 132px}
 .panel{background:rgba(17,48,58,.9);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:1.6rem 1.6rem 1.4rem}
@@ -268,46 +239,6 @@ h1{font-family:var(--f-hand);font-weight:400;color:var(--heading);font-size:2.2r
 .btn{font:inherit;font-family:var(--f-hand);letter-spacing:1px;text-transform:uppercase;border:0;border-radius:999px;cursor:pointer;color:var(--dad-ocean-deep);background:var(--dad-sky);padding:.55rem 1.2rem;transition:transform .15s,filter .15s}
 .btn:hover{filter:brightness(.96)}
 .btn:active{transform:scale(.97)}
-.btn:focus-visible,.tile:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
-.big{display:block;margin:0 auto;font-size:1.5rem;padding:.9rem 2.2rem;background:var(--accent);color:#fff;box-shadow:0 6px 0 var(--deep)}
-.big:active{transform:translateY(3px);box-shadow:0 3px 0 var(--deep)}
-.stars{display:flex;justify-content:center;gap:4px;margin:0 0 .3rem;flex-wrap:wrap}
-.stars i{width:20px;height:20px;display:block;background:#2C4D56;clip-path:polygon(50% 0,62% 35%,100% 38%,70% 60%,80% 100%,50% 76%,20% 100%,30% 60%,0 38%,38% 35%)}
-.stars i.done{background:var(--teal-hi)}.stars i.now{background:var(--dad-amber)}
-.count{text-align:center;font-family:var(--f-hand);color:var(--dad-amber);margin:0 0 .8rem;letter-spacing:1px}
-.qlabel{text-align:center;font-family:var(--f-hand);font-weight:400;font-size:1.9rem;color:var(--heading);margin:0 0 1.2rem}
-.choices{display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;align-items:start}
-.choice{display:flex;flex-direction:column;align-items:center;gap:.5rem}
-.or{display:none}
-.tile{width:100%;min-height:200px;border:3px solid transparent;border-radius:16px;cursor:pointer;font:inherit;color:var(--ink);background:var(--c,#123F47);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6rem;padding:1.2rem 1rem;box-shadow:0 5px 0 rgba(0,0,0,.35);transition:transform .15s,border-color .15s}
-.tile:hover{transform:translateY(-3px);border-color:var(--teal-hi)}
-.tile.picked{border-color:var(--accent);box-shadow:0 0 0 4px var(--surface),0 0 0 7px var(--accent)}
-.tile .emo{font-size:3.4rem;line-height:1}
-.tile .txt{font-weight:700;font-size:1.3rem;line-height:1.25;text-align:center}
-.tile.swap{animation:swap .35s ease}
-@keyframes swap{0%{transform:scale(.94);opacity:.4}100%{transform:none;opacity:1}}
-.reroll{font-size:.95rem;padding:.35rem .9rem;background:var(--dad-sky);color:var(--dad-ocean-deep)}
-.ask{background:var(--dad-sky)}
-.askbox{display:block;margin-top:1.2rem}
-.askbox label{display:block;font-weight:700;margin-bottom:.35rem}
-textarea{width:100%;min-height:90px;font:inherit;font-size:1.05rem;border:2px solid #2A5D69;border-radius:10px;padding:.7rem;color:var(--dad-sand);background:var(--surface-2);resize:vertical}
-.btnrow{display:flex;flex-wrap:nowrap;justify-content:center;gap:8px;margin:.7rem auto 0;max-width:520px}
-.btnrow .btn{flex:1 1 0;min-width:0;white-space:nowrap;font-size:1rem;padding:.55rem .4rem;text-align:center}
-.btnrow .btn:disabled{opacity:.4;cursor:default;filter:grayscale(1)}
-.saved{display:block;text-align:center;min-height:1.4em;margin-top:.4rem}
-@media(max-width:400px){.btnrow{gap:5px}.btnrow .btn{font-size:.9rem;padding:.5rem .2rem;letter-spacing:.5px}}
-.send{background:var(--accent);color:var(--dad-charcoal)}
-.saved{font-size:.95rem;color:#5B8FFF;font-weight:700}
-.notes{list-style:none;padding:0;margin:.6rem 0 0}
-.notes li{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:.4rem .7rem;margin-top:.3rem;font-size:1rem}
-.sum h2{font-family:var(--f-hand);font-weight:400;font-size:2rem;color:var(--heading);text-align:center;margin:0 0 .3rem}
-.sum .yay{text-align:center;margin:0 0 1.2rem}
-.sum ol{list-style:none;padding:0;margin:0 0 1.4rem;display:grid;gap:.6rem}
-.sum li{display:flex;gap:.8rem;align-items:flex-start;background:var(--c,#123F47);border:1px solid var(--line);border-radius:12px;padding:.7rem .9rem}
-.sum .n{flex:0 0 auto;width:2rem;height:2rem;border-radius:50%;background:var(--dad-ocean);display:grid;place-items:center;font-weight:700;color:var(--dad-sand);box-shadow:inset 0 0 0 2px var(--teal-hi)}
-.sum .e{font-size:1.7rem;line-height:1}
-.sum .vs{display:block;font-size:.95rem;color:#D9CDB9}
-.sum .note{display:block;font-size:.98rem;margin-top:.2rem;background:rgba(246,235,217,.08);border-radius:6px;padding:.2rem .5rem}
 .foot{position:fixed;left:0;right:0;bottom:0;z-index:5;margin:0;padding:4px 8px 5px;background:rgba(10,24,30,.97);border-top:2px dashed var(--teal-hi);color:var(--dad-sand);font-size:.8rem;display:flex;flex-direction:column;gap:3px;max-height:112px}
 .foot a{color:var(--dad-amber)}
 .foot .strip{display:flex;align-items:center;gap:8px;font:700 9.5px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.4px;color:#A9C3C8;white-space:nowrap;overflow:hidden;max-width:860px;width:100%;margin:0 auto}
@@ -404,41 +335,11 @@ body.paused .beacon i,body.paused .beacon i::after{animation-play-state:paused}
 .tout .ts{color:#C79A55}
 body.paused .lane *{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){.lane{display:none}.row1 .lane{display:none}}
-.leadrow{display:flex;align-items:center;justify-content:center;gap:.8rem;max-width:560px;margin:0 auto 1.6rem}
-.leadrow .lead{margin:0;text-align:left}
 /* ---- Dad palette for the "from Dad" parts (css/dad-palette.css); Base pastel tiles and themed backgrounds stay ---- */
-#start.panel,#quiz.panel,#summary.panel{border-top:8px solid var(--teal-hi);}
-#start h1,.sum h2{color:var(--dad-sand)}
-#start .from{color:var(--dad-amber)}
-#start .lead{color:var(--dad-sand)}
-.qlabel{color:var(--dad-sand)}.count{color:var(--dad-amber)}
-.big{background:var(--dad-ocean);color:#fff;box-shadow:0 6px 0 var(--dad-ocean-deep)}
-.big:active{box-shadow:0 3px 0 var(--dad-ocean-deep)}
-.btnrow .btn.send{background:var(--dad-amber);color:var(--dad-charcoal)}
-.btnrow .btn.skip{background:var(--dad-sky);color:var(--dad-ocean-deep)}
-.btnrow .bk{background:var(--dad-sand);color:var(--dad-ocean-deep);box-shadow:inset 0 0 0 2px var(--dad-ocean)}
-.askbox label{color:var(--dad-sand)}
-textarea::placeholder{color:#B9AE9C;opacity:1}
-textarea:focus-visible{border-color:var(--dad-amber);outline:3px solid var(--dad-amber)!important;outline-offset:2px}
-.yn .tile{color:var(--dad-charcoal)}
-.yn #t0{background:var(--dad-sky)!important;border-color:var(--dad-ocean)}
-.yn #t1{background:var(--dad-sand)!important;border-color:var(--dad-amber)}
-.yn .tile.picked{box-shadow:0 0 0 4px var(--surface),0 0 0 7px var(--dad-amber)}
-.btn:focus-visible,.tile:focus-visible{outline-color:var(--dad-amber)}
 /* ---- Code-drift trial (PREVIEW ONLY): faint made-up log lines drifting up inside Dad-palette elements.
    Generic dummy text, opacity .12, clipped to each element, under a scrim; transform-only, paused when hidden, still for reduced motion. ---- */
 :root{--code-dark:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22320%22 height=%22240%22%3E%3Cg font-family=%22monospace%22 font-size=%2211%22 fill=%22%23142849%22%3E%3Ctext x=%226%22 y=%2214%22%3E%5Bok%5D worker-3 heartbeat 200 12ms%3C/text%3E%3Ctext x=%226%22 y=%2234%22%3EGET /api/v1/items%3Fpage=4 200%3C/text%3E%3Ctext x=%226%22 y=%2254%22%3Ecache hit ratio=0.93 keys=4096%3C/text%3E%3Ctext x=%226%22 y=%2274%22%3Ejob%234821 queued -%3E running%3C/text%3E%3Ctext x=%226%22 y=%2294%22%3Esync batch 17/40 done%3C/text%3E%3Ctext x=%226%22 y=%22114%22%3EINFO tick 0x3fa2 latency=8ms%3C/text%3E%3Ctext x=%226%22 y=%22134%22%3Eretry 1/3 ... ok%3C/text%3E%3Ctext x=%226%22 y=%22154%22%3Ebuild step 5/9 passed%3C/text%3E%3Ctext x=%226%22 y=%22174%22%3Eping node-b 4ms ttl=58%3C/text%3E%3Ctext x=%226%22 y=%22194%22%3EINFO pool size=12 idle=7%3C/text%3E%3Ctext x=%226%22 y=%22214%22%3E%5Bok%5D checksum 9f3c a1e0 7b21%3C/text%3E%3Ctext x=%226%22 y=%22234%22%3Eflush queue len=0%3C/text%3E%3C/g%3E%3C/svg%3E");--code-light:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22320%22 height=%22240%22%3E%3Cg font-family=%22monospace%22 font-size=%2211%22 fill=%22%239FF0D8%22%3E%3Ctext x=%226%22 y=%2214%22%3E%5Bok%5D worker-3 heartbeat 200 12ms%3C/text%3E%3Ctext x=%226%22 y=%2234%22%3EGET /api/v1/items%3Fpage=4 200%3C/text%3E%3Ctext x=%226%22 y=%2254%22%3Ecache hit ratio=0.93 keys=4096%3C/text%3E%3Ctext x=%226%22 y=%2274%22%3Ejob%234821 queued -%3E running%3C/text%3E%3Ctext x=%226%22 y=%2294%22%3Esync batch 17/40 done%3C/text%3E%3Ctext x=%226%22 y=%22114%22%3EINFO tick 0x3fa2 latency=8ms%3C/text%3E%3Ctext x=%226%22 y=%22134%22%3Eretry 1/3 ... ok%3C/text%3E%3Ctext x=%226%22 y=%22154%22%3Ebuild step 5/9 passed%3C/text%3E%3Ctext x=%226%22 y=%22174%22%3Eping node-b 4ms ttl=58%3C/text%3E%3Ctext x=%226%22 y=%22194%22%3EINFO pool size=12 idle=7%3C/text%3E%3Ctext x=%226%22 y=%22214%22%3E%5Bok%5D checksum 9f3c a1e0 7b21%3C/text%3E%3Ctext x=%226%22 y=%22234%22%3Eflush queue len=0%3C/text%3E%3C/g%3E%3C/svg%3E")}
-#start.panel,#quiz.panel,#summary.panel,.big,.btnrow .btn,.yn .tile{position:relative;overflow:hidden;isolation:isolate;--code:var(--code-dark);--scrim:rgba(246,235,217,.45)}
-#start.panel,#quiz.panel,#summary.panel{--code:var(--code-light);--scrim:rgba(17,48,58,.55)}
-.big{--code:var(--code-light);--scrim:rgba(15,92,110,.35)}
-.btnrow .btn.send{--scrim:rgba(242,165,65,.4)}.btnrow .btn.skip,.yn #t0{--scrim:rgba(214,236,239,.4)}
-#start.panel::before,#quiz.panel::before,#summary.panel::before,.big::before,.btnrow .btn::before,.yn .tile::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(100% + 240px);z-index:-2;pointer-events:none;background:var(--code) 0 0/320px 240px repeat;opacity:.12;animation:codeup var(--phi-code-panel) linear var(--phi-code-panel-d) infinite;will-change:transform}
-#start.panel::before,#quiz.panel::before,#summary.panel::before{opacity:.1}
-.btnrow .btn::before,.big::before,.yn .tile::before{animation-duration:var(--phi-bg-drift);animation-delay:var(--phi-bg-drift-d);opacity:.14}
-#start.panel::after,#quiz.panel::after,#summary.panel::after,.big::after,.btnrow .btn::after,.yn .tile::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at 50% 50%,var(--scrim) 35%,transparent 100%)}
 @keyframes codeup{from{transform:translateY(0)}to{transform:translateY(-240px)}}
-body.paused #start.panel::before,body.paused #quiz.panel::before,body.paused #summary.panel::before,body.paused .big::before,body.paused .btnrow .btn::before,body.paused .yn .tile::before{animation-play-state:paused}
-@media(prefers-reduced-motion:reduce){#start.panel::before,#quiz.panel::before,#summary.panel::before,.big::before,.btnrow .btn::before,.yn .tile::before{animation:none}}
 /* home screen code drift (owner pt24u 11:40 AWST 26 Oct, "we lost the matrix code"): the questionnaire panel that carried this drifting
    code log moved to its own page, so the blank home area keeps the same layer on its own: same texture, colour, opacity, codeup timing
    (PHI ladder), column where the panel sat; no box, no content. Transparent, so the matrix rain and the space loop still show through. */
@@ -449,18 +350,9 @@ html[data-theme="light"] .home-code::before{background-image:var(--code-dark);op
 body.paused .home-code::before{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){.home-code::before{animation:none}}
 
-.agenote{background:#1E3A3A;color:var(--dad-sand);border-left:8px solid var(--dad-amber);border-radius:12px;padding:1rem 1.2rem;margin:0 auto 1.2rem;max-width:640px;font-size:1.15rem;line-height:1.55}
-.yn .reroll{display:none!important}
-.yn .qlabel{font-size:1.6rem;line-height:1.3;max-width:640px;margin-left:auto;margin-right:auto}
-@media(max-width:600px){.yn .qlabel{font-size:1.3rem}}
 @media(max-width:600px){
   .panel{padding:1.2rem 1rem 1.1rem}
   h1{font-size:1.75rem}
-  .choices{gap:.7rem}
-  .tile{min-height:160px;padding:.9rem .5rem}
-  .tile .emo{font-size:2.7rem}.tile .txt{font-size:1.08rem}
-  .qlabel{font-size:1.55rem}
-  .stars i{width:17px;height:17px}
 }
 @media(prefers-reduced-motion:reduce){.rain{display:none}.tile .sp{display:none!important}.tile.swap{animation:none}.btn,.tile{transition:none}}
 /* ---- Space loop background (trial, preview only): fixed full-page video at 30% behind all content; poster only for reduced motion ---- */
@@ -498,7 +390,6 @@ body.paused .home-code::before{animation-play-state:paused}
 <video class="bgloop" id="bgloop" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" disablepictureinpicture data-poster="media/space-loop-poster.webp?v=4" data-src-webm="media/space-loop.webm?v=4" data-src-mp4="media/space-loop.mp4?v=4" data-poster-land="media/space-loop-land-poster.webp?v=2" data-src-webm-land="media/space-loop-land.webm?v=2" data-src-mp4-land="media/space-loop-land.mp4?v=2"></video><div class="bgloop-still" aria-hidden="true"></div>
 <script>(function(){var v=document.getElementById('bgloop'),rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)');function sync(){if((rm&&rm.matches)||document.hidden){v.pause();}else{var p=v.play();if(p&&p.catch)p.catch(function(){});}}v.muted=true;/* landscape screens get the landscape render (Uranus and Saturn cross inside the frame; owner 12:46), portrait the v3 loop */var lm=window.matchMedia&&matchMedia('(orientation: landscape)');function sfx(){return lm&&lm.matches?'-land':''}function pick(){v.poster=v.getAttribute('data-poster'+sfx());if(!v.getAttribute('data-on'))return;var t0=v.currentTime;while(v.firstChild)v.removeChild(v.firstChild);[['webm','video/webm'],['mp4','video/mp4']].forEach(function(t){var s=document.createElement('source');s.src=v.getAttribute('data-src-'+t[0]+sfx());s.type=t[1];v.appendChild(s);});v.load();v.currentTime=t0;sync();}pick();if(lm&&lm.addEventListener)lm.addEventListener('change',pick);function go(){if(v.getAttribute('data-on'))return;v.setAttribute('data-on','1');v.preload='auto';pick();document.addEventListener('visibilitychange',sync);if(rm&&rm.addEventListener)rm.addEventListener('change',sync);sync();}/* space loop video starts after load, when idle (poster shows until then; owner t713u lighter load) */if(window.LoadTiers)LoadTiers.add(2,go,'space-loop video',{id:'space',w:141.3});else addEventListener('load',go);window.__bgloopGo=go;})();</script>
 <div class="rain" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-<div class="fx" id="fxA" aria-hidden="true"></div><div class="fx" id="fxB" aria-hidden="true"></div>
 <!-- Questionnaire header (owner 24 Oct 2026 02:50 AWST): the live Base Dashboard header STRUCTURE (remote 517e809 moderation/:
      top bar with logo + right-side key, weather chip / fun-fact ticker row, Dad's DJ, then the bottom masthead row with the mark,
      title, pill and the tagline (owner 02:59 AWST: tagline in the bottom row, not a line under the header)),
@@ -535,7 +426,7 @@ body.paused .home-code::before{animation-play-state:paused}
   </div></div>
   <!-- "Questions for Base" row removed from the home screen (owner 11:25 AWST 26 Oct): it lives only on the questionnaire page -->
 </div>
-<main class="wrap" id="home-main"><div class="home-code" aria-hidden="true"></div></main><script>LoadTiers.script("js/first-content.js?v=character1",1,{id:"dad-mark"});LoadTiers.script("js/home-windows.js?v=fit2",1,{id:"home-windows"})</script><!-- home windows: six peeks into what the header and footer already run (owner 15:47 AWST 26 Oct) --><!-- first content: the hostess card (owner 15:24 / 17:23 AWST 26 Oct); tap opens her enlarged view, js/character.js (owner 17:38 AWST 26 Oct) --><!-- home screen left blank (owner pt18u 11:19 AWST 26 Oct): the questionnaire moved to its own unlinked page -->
+<main class="wrap" id="home-main"><div class="home-code" aria-hidden="true"></div></main><script>LoadTiers.script("js/first-content.js?v=showcase1",1,{id:"character"})</script><!-- main area = the character showcase ONLY (owner 17:45 AWST 26 Oct: "get rid of any quizzes ... Just leave the girl ... any new girls we create just put them on there"): one card per data/characters.js entry, tap opens her enlarged view (js/character.js). Six home windows + topic quiz removed; restore from tag pre-cleanmain-2026-10-26. The faint drifting code layer behind it (.home-code, owner pt24u) stays. -->
 <style>.foot .note .gate-out{-webkit-appearance:none;appearance:none;font:inherit;font-size:.854em;color:inherit;opacity:.618;background:none;border:0;padding:0;margin:0;cursor:pointer;text-decoration:underline;text-underline-offset:.236em}.foot .note .gate-out:hover,.foot .note .gate-out:focus-visible{opacity:1;color:#0AF2FF}</style><!-- Log out (clears the remembered 18+ unlock on this device) -->
 <div class="foot" id="foot">
   <div class="row1"><div class="lane" id="laneF" aria-hidden="true"></div>
@@ -564,101 +455,8 @@ body.paused .home-code::before{animation-play-state:paused}
   function fmt(k,v){return String(C[k]||'').replace(/\{(\w+)\}/g,function(_,n){return v&&v[n]!=null?v[n]:'';});}
   document.title=C.pageTitle||document.title;
   Array.prototype.forEach.call(document.querySelectorAll('[data-copy]'),function(el){var k=el.getAttribute('data-copy');if(C[k]!=null)el.textContent=C[k];});
-  if(C.askPlaceholder&&document.getElementById('note'))document.getElementById('note').placeholder=C.askPlaceholder;
-  // ---- Options: text, emoji, tile colour, background theme ----
-  var O=function(t,e,c,th){return {t:t,e:e,c:c,th:th};};
-  var PAIRS=[
-    [O('Crafts and how-tos','\u2702\uFE0F','#FCD5B5','craft'),O('Nature and plants','\uD83C\uDF3F','#C6E9D2','nature'),'craft'],
-    [O('Feelings and mental health','\uD83D\uDC97','#F8C8D5','feelings'),O('Health and the body','\uD83E\uDEC0','#B5E3E0','body'),'feelings'],
-    [O('Recipes and food','\uD83E\uDDC1','#FCD5B5','food'),O('Sport and outdoors','\u26BD','#C6E9D2','sport'),'food'],
-    [O('Short quick reads','\u26A1','#FBE6A2','quick'),O('Longer deep-dive articles','\uD83D\uDCDA','#DCD0F2','deep'),'quick'],
-    [O('Videos','\uD83C\uDFAC','#F8C8D5','video'),O('Articles with photos','\uD83D\uDCF8','#B5E3E0','photo'),'video'],
-    [O('Quizzes','\u2753','#DCD0F2','quiz'),O('Weekly challenges','\uD83C\uDFC6','#FBE6A2','challenge'),'quiz'],
-    [O('Stories about real people you look up to','\uD83C\uDF1F','#F8C8D5','people'),O('Big questions about how the world works','\uD83C\uDF0D','#B5E3E0','bigq'),'people'],
-    [O('History and how people lived long ago','\uD83D\uDCDC','#FCD5B5','history'),O('Science and new discoveries','\uD83D\uDD2C','#C6E9D2','science'),'history'],
-    [O('Dinosaurs and fossils','\uD83E\uDD95','#FBE6A2','dino'),O('The cosmos','\uD83E\uDE90','#DCD0F2','cosmos'),'cosmos'],
-    [O('New content every day','\u2600\uFE0F','#FBE6A2','daily'),O('A big batch once a week','\uD83D\uDCE6','#DCD0F2','weekly'),'daily'],
-    {yn:'weather'}, // Q11: plain Yes / No (no Reroll)
-    {yn:'age'}      // Q12: age dial note + Yes / No
-  ];
-  var POOL=[
-    O('Parenting','\uD83D\uDC6A','#F8C8D5','family'),O('Strategies for dealing with school','\uD83C\uDF92','#B5E3E0','school'),
-    O('Strategies for dealing with friends','\uD83E\uDD1D','#C6E9D2','friends'),O('The history of giants','\uD83D\uDC63','#FCD5B5','giants'),
-    O('How whales communicate through song','\uD83D\uDC0B','#B5E3E0','whales'),O('Tutorials on how electricity works','\uD83D\uDCA1','#FBE6A2','electric'),
-    O('Building your own webpage','\uD83D\uDCBB','#DCD0F2','web'),O('Music','\uD83C\uDFB5','#F8C8D5','music'),O('Pop music','\uD83C\uDFA4','#F8C8D5','pop'),
-    O('Classical music','\uD83C\uDFBB','#DCD0F2','classical'),O('Using AI in a healthy way','\uD83E\uDD16','#C6E9D2','ai'),O('Teens using AI','\uD83D\uDCF1','#B5E3E0','ai'),
-    O('Teen experience','\uD83C\uDF08','#F8C8D5','teen'),O('Young adult literature','\uD83D\uDCD6','#DCD0F2','ya'),O('Fire','\uD83D\uDD25','#FCD5B5','fire'),
-    O('Ancient or historical craft','\uD83C\uDFFA','#FCD5B5','ancient'),O('Human rights','\u270A','#FBE6A2','rights'),
-    O('Aboriginal Australia','\uD83E\uDD98','#FCD5B5','australia'),O('The future','\uD83D\uDE80','#DCD0F2','future')
-  ];
-  // ---- Background themes (decorative). Max ~14 elements per layer; transform/opacity animations only. ----
-  function btn(c){return '<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="'+c+'" stroke="#24292E" stroke-width="3"/><circle cx="14" cy="14" r="3" fill="#24292E"/><circle cx="26" cy="14" r="3" fill="#24292E"/><circle cx="14" cy="26" r="3" fill="#24292E"/><circle cx="26" cy="26" r="3" fill="#24292E"/></svg>';}
-  function scrap(c){return '<svg viewBox="0 0 40 30"><path d="M2 3 37 1 39 27 4 29Z" fill="'+c+'"/><path d="M8 10h22M8 16h18M8 22h20" stroke="#24292E" stroke-width="2"/></svg>';}
-  function parch(){return '<svg viewBox="0 0 60 44"><path d="M4 4Q30 0 56 4L54 40Q30 44 6 40Z" fill="#E9D3A8" stroke="#B98D52" stroke-width="2"/><path d="M12 14h34M12 21h30M12 28h26" stroke="#B98D52" stroke-width="1.6" stroke-dasharray="3 3"/></svg>';}
-  function star(){return '<svg viewBox="0 0 20 20"><path d="M10 0 12.5 7.5 20 10 12.5 12.5 10 20 7.5 12.5 0 10 7.5 7.5Z" fill="#F2A541"/></svg>';}
-  function clock(){return '<svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="26" fill="#F6EBD9" stroke="#F2A541" stroke-width="4"/><path d="M30 30V12" stroke="#0A3F4C" stroke-width="4" stroke-linecap="round"/><path d="M30 30h12" stroke="#0F5C6E" stroke-width="3" stroke-linecap="round"/></svg>';}
-  var MAP='<svg class="maplines" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice"><g fill="none" stroke="#B98D52" stroke-width="1.6"><path d="M10 80C60 40 110 120 170 70S280 30 390 90" stroke-dasharray="6 5"/><path d="M20 220c50-30 90 10 140-20s120-50 220 10" stroke-dasharray="2 6"/><path d="M60 0v300M160 0v300M260 0v300M360 0v300M0 60h400M0 160h400M0 260h400" stroke-opacity=".35" stroke-width="1"/><circle cx="300" cy="200" r="30"/><path d="M300 160v80M260 200h80"/></g></svg>';
-  var CUSTOM={
-    craft:function(){var c=['#F2A541','#2A8FA3','#F6EBD9','#0F5C6E','#D6ECEF'],a=[];
-      for(var i=0;i<5;i++)a.push({h:btn(c[i]),m:'fall',s:30});
-      for(i=0;i<4;i++)a.push({h:scrap(c[(i+2)%5]),m:'fall',s:40});
-      a.push({h:'\uD83E\uDDF6',m:'float',s:44},{h:'\uD83E\uDDF6',m:'float',s:36},{h:'\u2702\uFE0F',m:'float',s:40},{h:'\uD83E\uDEA1',m:'float',s:32});return a;},
-    cosmos:function(){var a=[];for(var i=0;i<9;i++)a.push({h:star(),m:"twinkle",s:16+(i%3)*8,o:.9});
-      a.push({h:'\u2728',m:'drift',s:24},{h:'\uD83E\uDE90',m:'drift',s:40,d:46},{h:'\uD83D\uDEF8',m:'ufo',s:34,d:21,del:-9});return a;},
-    history:function(){var a=[{map:1}];for(var i=0;i<6;i++)a.push({h:parch(),m:'drift',s:56,d:34});
-      a.push({h:'\uD83E\uDDED',m:'spin',s:54,d:40},{h:'\uD83C\uDFDB\uFE0F',m:'float',s:34},{h:'\u23F3',m:'float',s:30});return a;},
-    daily:function(){var a=[{h:clock(),m:'spin',s:70,d:60}];
-      a.push({h:'\u2600\uFE0F',m:'float',s:46},{h:'\uD83D\uDCC5',m:'float',s:34},{h:'\uD83D\uDCC5',m:'float',s:30},{h:'\u2615',m:'float',s:30});
-      for(var i=0;i<5;i++)a.push({h:'\u2B50',m:'twinkle',s:16,o:.6});return a;},
-    food:function(){var e=['\uD83C\uDF6A','\uD83E\uDDC1','\uD83C\uDF53','\uD83E\uDD5E','\uD83C\uDF4B','\uD83C\uDF69'],a=[];
-      for(var i=0;i<10;i++)a.push({h:e[i%e.length],m:'fall',s:30+(i%3)*6});a.push({h:'\uD83E\uDD44',m:'float',s:40});return a;}
-  };
-  var SIMPLE={ // emoji + motion
-    nature:['\uD83C\uDF43\uD83C\uDF3F\uD83C\uDF38\uD83C\uDF3C','fall'], feelings:['\uD83D\uDC97\uD83D\uDC9C\uD83D\uDC9B\uD83E\uDEE7','rise'],
-    body:['\uD83D\uDCA7\uD83C\uDF4E\uD83E\uDDD8\uD83D\uDCAA','float'], sport:['\u26BD\uD83C\uDFD0\uD83C\uDFBE\uD83C\uDFC3\u200D\u2640\uFE0F','bob'],
-    quick:['\u26A1\uD83D\uDCC4\u23F1\uFE0F','drift'], deep:['\uD83D\uDCDA\uD83D\uDD0D\uD83D\uDCD6','float'], video:['\uD83C\uDFAC\u25B6\uFE0F\uD83C\uDF7F','drift'],
-    photo:['\uD83D\uDCF7\uD83D\uDDBC\uFE0F\uD83C\uDF1E','float'], quiz:['\u2753\u2705\u2754','rise'], challenge:['\uD83C\uDFC6\uD83C\uDFAF\uD83E\uDD47','bob'],
-    people:['\uD83C\uDF1F\u2B50\uD83D\uDCAB','twinkle'], bigq:['\uD83C\uDF0D\u2754\uD83C\uDF00','drift'], science:['\uD83D\uDD2C\uD83E\uDDEA\u269B\uFE0F\uD83E\uDDEC','float'],
-    dino:['\uD83E\uDD95\uD83E\uDD96\uD83E\uDDB4\uD83C\uDF0B','drift'], weather:['\uD83C\uDF24\uFE0F\u2601\uFE0F\uD83C\uDF27\uFE0F\u2744\uFE0F\uD83C\uDF08','float'], weekly:['\uD83D\uDCE6\uD83D\uDDD3\uFE0F\uD83C\uDF81','fall'],
-    family:['\uD83D\uDC6A\uD83C\uDFE1\uD83D\uDC9E','float'], school:['\uD83C\uDF92\u270F\uFE0F\uD83D\uDCD0\uD83D\uDCDA','fall'], friends:['\uD83E\uDD1D\uD83D\uDCAC\uD83D\uDC9B','rise'],
-    giants:['\uD83D\uDC63\u26F0\uFE0F\uD83C\uDFF0','drift'], whales:['\uD83D\uDC0B\uD83C\uDFB5\uD83E\uDEE7','rise'], electric:['\u26A1\uD83D\uDCA1\uD83D\uDD0B','twinkle'],
-    web:['\uD83D\uDCBB\uD83D\uDDB1\uFE0F\u2728','float'], music:['\uD83C\uDFB5\uD83C\uDFB6\uD83C\uDFB8','rise'], pop:['\uD83C\uDFA4\uD83D\uDCBF\u2728','bob'],
-    classical:['\uD83C\uDFBB\uD83C\uDFBC\uD83C\uDFB9','rise'], ai:['\uD83E\uDD16\uD83D\uDCF1\uD83D\uDC9A','float'], teen:['\uD83C\uDF08\uD83D\uDCAD\uD83C\uDF1F','float'],
-    ya:['\uD83D\uDCD6\u2728\uD83D\uDD8B\uFE0F','fall'], fire:['\uD83D\uDD25\u2728','rise'], ancient:['\uD83C\uDFFA\uD83E\uDDF6\uD83E\uDEA1','float'],
-    rights:['\u270A\uD83D\uDD4A\uFE0F\uD83D\uDC9C','rise'], australia:['\uD83E\uDD98\uD83C\uDF0F\uD83C\uDF05\uD83C\uDF3F','drift'], future:['\uD83D\uDD2E\uD83E\uDE90','cross']
-  };
-  // Dark Dad tile surfaces: each option's pastel family maps to a dark Dad tone (sand text >= 9:1 on all)
-  var DK={'#FCD5B5':'#3A2E22','#C6E9D2':'#123F47','#F8C8D5':'#2A363C','#B5E3E0':'#0F4A57','#FBE6A2':'#3B3320','#DCD0F2':'#1F3440'};
-  function dk(c){return DK[c]||'#123F47';}
-  function rnd(a,b){return a+Math.random()*(b-a);}
-  function items(th){
-    if(CUSTOM[th])return CUSTOM[th]();
-    var s=SIMPLE[th]||SIMPLE.teen, em=Array.from(s[0]).filter(function(ch){return !/[\u200D\uFE0F\u2640]/.test(ch);});
-    // Array.from splits on code points; rebuild ZWJ sequences crudely by using whole-string segments when available
-    if(window.Intl&&Intl.Segmenter){em=[];for(var seg of new Intl.Segmenter('en',{granularity:'grapheme'}).segment(s[0]))em.push(seg.segment);}
-    var a=[],n=s[1]==='cross'?5:10;
-    for(var i=0;i<n;i++)a.push({h:em[i%em.length],m:s[1],s:26+(i%3)*8});
-    if(s[1]==='cross')for(i=0;i<5;i++)a.push({h:'\u2B50',m:'twinkle',s:14,o:.6});
-    return a;
-  }
-  var layers=[document.getElementById('fxA'),document.getElementById('fxB')],cur=0,curTheme=null,clearT=null;
-  function build(el,th){
-    var a=items(th),h='';
-    a.forEach(function(it,i){
-      if(it.map){h+=MAP;return;}
-      var PHI_FALLBACK=11.09,PT=window.PhiTiming,nm={fall:'bg-fall',rise:'bg-fall',float:'bg-float',drift:'bg-sail',twinkle:'bg-twinkle',cross:'bg-cross',spin:'bg-spin',bob:'bg-bob'}[it.m];
-      var d=it.d||(nm?PT.s(nm):PHI_FALLBACK);   // every background mover on a PHI^n period (was random 2.5-40 s)
-      var st='--x:'+rnd(2,92).toFixed(1)+'vw;--y:'+rnd(6,88).toFixed(1)+'vh;--dx:'+rnd(-10,10).toFixed(1)+'vw;--dy:'+rnd(-12,12).toFixed(1)+'vh;--r:'+rnd(-200,200).toFixed(0)+'deg;--s:'+(it.s||34)+'px;--d:'+d.toFixed(3)+'s;--del:'+(it.del!=null?it.del:-d*(((PT.info(nm||'bg-float').k+i)*0.6180339887)%1)).toFixed(2)+'s'+(it.o?';--o:'+it.o:'');
-      h+='<span class="p m-'+it.m+'" style="'+st+'">'+it.h+'</span>';
-    });
-    el.innerHTML=h;
-  }
-  function theme(th){
-    if(th===curTheme)return; curTheme=th;
-    var next=layers[1-cur],old=layers[cur];
-    build(next,th); next.classList.add('on'); old.classList.remove('on'); cur=1-cur;
-    clearTimeout(clearT); clearT=setTimeout(function(){if(!old.classList.contains('on'))old.innerHTML='';},900);
-  }
+  // topic quiz removed from the home screen (Danny 17:45 AWST 26 Oct: "get rid of any quizzes ... Just leave the girl"): options, PAIRS/POOL,
+  // the fxA/fxB theme layers and the quiz state/wiring are gone; restore from tag pre-cleanmain-2026-10-26 if ever needed.
 
   var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   var PR=(window.SITE_NAME||'').toLowerCase();var tprEl=document.getElementById('tpr');if(tprEl)tprEl.textContent=PR;   // terminal prompt: SITE_NAME lowercased (e.g. edgar$)
@@ -963,69 +761,8 @@ body.paused .home-code::before{animation-play-state:paused}
     },250);
   })();
 
-  // ---- Quiz state (memory only) ----
-  var $=function(id){return document.getElementById(id);};
-  var state,qi,simLastQ=-1;
-  function reset(){state=PAIRS.map(function(p){var th=p.yn==='age'?'teen':'weather';return p.yn?{yn:p.yn,opts:[O(C.yes,'\uD83D\uDC4D','#C6E9D2',th),O(C.no,'\uD83D\uDC4E','#F8C8D5',th)],theme:th,pick:null,notes:[]}:{opts:[p[0],p[1]],theme:p[2],pick:null,notes:[]};});qi=0;}
-  function show(id){['start','quiz','summary'].forEach(function(s){$(s).hidden=(s!==id);});window.scrollTo(0,0);if(window.SIM_LIGHTS)SIM_LIGHTS();}
-  function render(){
-    var s=state[qi];
-    $('stars').innerHTML=state.map(function(x,i){return '<i class="'+(i<qi?'done':i===qi?'now':'')+'"></i>';}).join('');
-    $('count').textContent=fmt('progress',{n:qi+1,total:state.length});
-    document.querySelector('.qlabel').textContent=s.yn==='weather'?C.weatherQ:s.yn==='age'?C.ageQ:C.label;
-    var an=$('agenote');an.hidden=s.yn!=='age';an.textContent=C.ageNote;
-    document.getElementById('quiz').classList.toggle('yn',!!s.yn);
-    [0,1].forEach(function(i){var t=$('t'+i),o=s.opts[i];t.querySelector('.emo').textContent=o.e;t.querySelector('.txt').textContent=o.t;t.style.setProperty('--c',dk(o.c));t.classList.toggle('picked',s.pick===i);t.setAttribute('aria-pressed',String(s.pick===i));});
-    $('saved').textContent='';$('note').value='';
-    $('notes').innerHTML=s.notes.map(function(n){return '<li></li>';}).join('');
-    Array.prototype.forEach.call($('notes').children,function(li,i){li.textContent='\u2709\uFE0F '+s.notes[i];});
-    $('back').disabled=$('back2').disabled=(qi===0);
-    theme(s.theme);
-    if(qi!==simLastQ){simLastQ=qi;}
-    SIM_LIGHTS();
-  }
-  function next(){if(qi<state.length-1){qi++;render();}else summary();}
-  function summary(){
-    show('summary');theme('cosmos');
-    var ol=$('sumlist');ol.innerHTML='';
-    state.forEach(function(s,i){
-      var li=document.createElement('li'),p=s.pick!=null?s.opts[s.pick]:null,o=s.pick!=null?s.opts[1-s.pick]:null;
-      li.style.setProperty('--c',p?dk(p.c):'#1C2A30');
-      li.innerHTML='<span class="n"></span><span class="e" aria-hidden="true"></span><span class="b"><strong></strong><span class="vs"></span></span>';
-      li.querySelector('.n').textContent=i+1;li.querySelector('.e').textContent=p?p.e:'\u23ED\uFE0F';
-      li.querySelector('strong').textContent=p?p.t:C.skipped;
-      li.querySelector('.vs').textContent=s.yn==='weather'?C.weatherSum:s.yn==='age'?C.ageSum:(p?fmt('over',{x:o.t}):fmt('either',{a:s.opts[0].t,b:s.opts[1].t}));
-      s.notes.forEach(function(n){var d=document.createElement('span');d.className='note';d.textContent='\u2709\uFE0F '+n;li.querySelector('.b').appendChild(d);});
-      ol.appendChild(li);
-    });
-  }
-  if($('go')){ /* questionnaire wiring: only where the questionnaire is (not on the blank home screen) */
-  $('go').onclick=function(){simLastQ=-1;reset();show('quiz');render();$('t0').focus({preventScroll:true});};
-  $('again').onclick=function(){simLastQ=-1;reset();show('start');theme('teen');};
-  [0,1].forEach(function(i){
-    var t=$('t'+i);
-    t.onpointerdown=function(){t.classList.remove('burst');void t.offsetWidth;t.classList.add('burst');};
-    t.addEventListener('animationend',function(e){if(e.target.classList.contains('sp'))t.classList.remove('burst');});
-    t.onclick=function(){state[qi].pick=i;var s0=state[qi],o=s0.opts[i];MLOG.log('q'+(qi+1)+' answered: '+(s0.yn?(i===0?'yes':'no'):o.t.toLowerCase()));render();setTimeout(next,650);};
-    t.onmouseenter=t.onfocus=function(){theme(state[qi].opts[i].th);};
-    t.onmouseleave=t.onblur=function(){theme(state[qi].theme);};
-  });
-  Array.prototype.forEach.call(document.querySelectorAll('.reroll'),function(b){
-    b.onclick=function(){
-      var i=+b.dataset.i,s=state[qi],other=s.opts[1-i].t,me=s.opts[i].t;
-      var c=POOL.filter(function(o){return o.t!==other&&o.t!==me;});
-      s.opts[i]=c[Math.floor(Math.random()*c.length)];
-      if(s.pick!=null)s.pick=null;
-      render();var t=$('t'+i);t.classList.remove('swap');void t.offsetWidth;t.classList.add('swap');
-      theme(s.opts[i].th); // lean toward the new topic
-    };
-  });
-  $('send').onclick=function(){var v=$('note').value.trim();if(!v){$('saved').textContent=C.empty;return;}
-    state[qi].notes.push(v);render();$('saved').textContent=C.saved;};
-  $('back').onclick=$('back2').onclick=function(){if(qi>0){qi--;render();}};
-  $('skip').onclick=function(){MLOG.log('q'+(qi+1)+' skipped');next();};
-  }
-  reset();if(!document.getElementById('home-main'))theme('teen');SIM_LIGHTS();readout();   // home: the middle layer is js/emoji-scene.js now (no rainbows; owner 12:06 / 12:17 AWST 26 Oct)
+  var state=null,qi=0;   // no quiz any more: the footer STEP / DONE lights rest at -- / 0
+  SIM_LIGHTS();readout();
 })();
 </script>
 <script src="js/quiz-dj-pill.js?v=djbutton1" defer></script>
