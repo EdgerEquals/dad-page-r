@@ -1,9 +1,9 @@
 /* first-content.js: the first content item on Dad's home screen (owner 15:24 AWST 26 Oct: "create the first piece of content for my
    website and just have it be my logo page so if I press on that it goes to where I add my logo").
-   ONE card in the content layer (#home-main): the hostess loop preview window (js/hostess.js; was the big equals mark until 26 Oct
+   ONE card in the content layer (#home-main): the hostess loop preview window (js/character.js + data/characters.js; was the big equals mark until 26 Oct
    17:23 AWST) with the label SITE_TITLE.
-   TAP: opens Dad's logo view, the same LogoZoom 'dad' zoom the header mark opens (detailed mark, eq-physics equals, logo sound), growing
-   from the card. If the zoom module has not loaded yet, the card presses the header mark, whose loader fetches it on demand.
+   TAP (Danny 17:38 AWST 26 Oct): opens HER enlarged view (js/character.js: full-screen black, evolves through her stages while left
+   open, close control / tap-out). It no longer opens the logo zoom; the header mini mark still does that.
    LAYERS: the card sits in the normal flow (z-index 1): the space loop, matrix rain, emoji scene, Sun/Earth and ping layers (fixed,
    z-index -1, pointer-events none) move behind it; the front orbit layer (z-index 4, pointer-events none) passes in front of it without
    taking taps. Transparent over black (footer principle: no dark-blue box), only a hairline and a soft cyan glow on hover/focus.
@@ -39,17 +39,12 @@
   var st = doc.createElement('style'); st.textContent = css; doc.head.appendChild(st);
   var sec = doc.createElement('section'); sec.className = 'fc'; sec.setAttribute('aria-label', 'Content');
   var b = doc.createElement('button'); b.type = 'button'; b.className = 'fc-card'; b.setAttribute('aria-haspopup', 'dialog');
-  b.setAttribute('aria-label', 'Open ' + (window.SITE_NAME || '') + "'s logo");
-  var hvw = doc.createElement('span'); hvw.className = 'fc-hvw'; hvw.setAttribute('aria-hidden', 'true');
+  b.setAttribute('aria-label', 'Open the hostess');
+  var hvw = doc.createElement('span'); hvw.className = 'fc-hvw'; hvw.setAttribute('aria-hidden', 'true'); hvw.setAttribute('data-character', 'hostess');
   var t = doc.createElement('span'); t.className = 'fc-t'; t.textContent = (window.SITE_TITLE||window.SITE_NAME||'');
   b.appendChild(hvw); b.appendChild(t); sec.appendChild(b); main.insertBefore(sec, main.querySelector('.hw'));   // first, above the home windows (js/home-windows.js) whichever loads first
-  // hostess loop in the card (js/hostess.js: poster first, clip after first paint + idle, seam fade, opacity by DIAL_POLITE_DIRTY)
-  (function () { var sc = doc.createElement('script'); sc.src = 'js/hostess.js?v=1'; sc.async = true;
-    sc.onload = function () { try { if (root.Hostess) root.Hostess.mount(hvw); } catch (x) {} }; doc.head.appendChild(sc); })();
-  b.addEventListener('click', function (e) {
-    e.preventDefault(); e.stopPropagation();
-    try { root.PhiAdapt && PhiAdapt.signal('dad-mark', 't'); } catch (x) {}
-    if (root.LogoZoom) { LogoZoom.open('dad', b); return; }
-    hb.__zf = b; hb.click();                                                          // header loader fetches the zoom, then opens it from the card
-  });
+  // hostess in the card (js/character.js mounts every [data-character]: poster first, clip after first paint + idle, seam fade, opacity by
+  // DIAL_POLITE_DIRTY; it also wires the card button so a tap opens her enlarged view)
+  if (root.Character) root.Character.scan(sec);
+  else { var sc = doc.createElement('script'); sc.src = 'js/character.js?v=1'; sc.async = true; doc.head.appendChild(sc); }   // scans on load
 })(window, document);

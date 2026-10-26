@@ -65,12 +65,15 @@
     '<input type="password" id="g-pw" placeholder="passcode" aria-label="Passcode" autocomplete="off" autocapitalize="off" spellcheck="false">' +
     '<button type="submit" id="g-go">Enter</button><div class="msg" id="g-msg" role="status" aria-live="polite"></div></form>';
   body.appendChild(g);
-  // hostess loop behind the box: after first paint + idle, never before the mark and box are drawn (js/hostess.js)
-  var hvw = d.createElement('div'); hvw.className = 'hvw'; hvw.setAttribute('aria-hidden', 'true'); g.insertBefore(hvw, g.firstChild.nextSibling);
+  // hostess loop behind the box: after first paint + idle, never before the mark and box are drawn (js/character.js, data-character).
+  // Gate: enlarge is OFF and her layer has pointer-events none, so a tap anywhere always reaches the passcode box, never her.
+  var hvw = d.createElement('div'); hvw.className = 'hvw'; hvw.setAttribute('aria-hidden', 'true');
+  hvw.setAttribute('data-character', 'hostess'); hvw.setAttribute('data-character-enlarge', 'off');
+  hvw.addEventListener('character:mount', function () { g.className = 'hv-on'; });
+  g.insertBefore(hvw, g.firstChild.nextSibling);
   w.requestAnimationFrame(function () { setTimeout(function () {
-    var sc = d.createElement('script'); sc.src = 'js/hostess.js?v=1'; sc.async = true;
-    sc.onload = function () { try { if (w.Hostess) { w.Hostess.mount(hvw); g.className = 'hv-on'; } } catch (e) {} };
-    d.head.appendChild(sc);
+    if (w.Character) { w.Character.scan(g); return; }
+    var sc = d.createElement('script'); sc.src = 'js/character.js?v=1'; sc.async = true; d.head.appendChild(sc);   // scans on load
   }, Math.round(1000 / PHI)); });
   var f = g.querySelector('form'), age = g.querySelector('#g-age'), pw = g.querySelector('#g-pw'), go = g.querySelector('#g-go'), msg = g.querySelector('#g-msg');
   function say(t, bad) { msg.textContent = t; msg.className = 'msg' + (bad ? ' bad' : ''); }
