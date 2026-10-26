@@ -40,15 +40,21 @@
   tLP.type = 'lowpass'; tLP.frequency.value = FHI; tLP.Q.value = 20 * Math.log10(IPH);   // unit: Web Audio's Q is in dB (Q linear PHI^-1 = -4.18 dB)
   (function () { var n = 4097, cv = new Float32Array(n); for (var i = 0; i < n; i++) { var x = 2 * i / (n - 1) - 1; cv[i] = CEIL * Math.tanh(x / CEIL); } tSh.curve = cv; })();   // unit: 2^12 + 1 points over -1..1
   function fbTo(v) { return Math.min(FBC, Math.max(0, v)); }
+  // THE THROW's taps (push 2): the full outgoing mix, the flanger wet, the scatter loop alone and the riser, each a gain (0 at rest)
+  // into a high-pass (Q PHI^-1 linear) so the old kick and bass stay out of the repeats, then into the same eDel.
+  var tHP = c.createBiquadFilter(), TAP = [g(0), g(0), g(0), g(0)]; tHP.type = 'highpass'; tHP.Q.value = 20 * Math.log10(IPH);
+  TAP.forEach(function (t) { t.connect(tHP); }); tHP.connect(eDel);
   post.connect(eSend); eSend.connect(eDel); eDel.connect(tLP); tLP.connect(tSh); tSh.connect(eFb); eFb.connect(eDel); tSh.connect(eRet); eRet.connect(tChop); tChop.connect(tDuck); tDuck.connect(post2);
   post.connect(wSend); wSend.connect(wConv); wConv.connect(post2);
   post2.connect(cDry); cDry.connect(out); post2.connect(shp); shp.connect(cWet); cWet.connect(out);
   // FLANGER + RISER (transitions only, owner 15:44; 'flounder' = flanger): a short swept delay with feedback beside the dry path, and a
   // band-passed noise riser; both silent until a transition opens them.
+  post.connect(TAP[0]);
   var flD = c.createDelay(IPH), flL = c.createOscillator(), flDep = g(Math.pow(PHI, -9)), flFb = g(0), flW = g(0), FLB = Math.pow(PHI, -7);   // phi: base delay PHI^-7 s (3.4 ms), sweep +-PHI^-9 s
   flD.delayTime.value = FLB; flL.frequency.value = 0; flL.connect(flDep); flDep.connect(flD.delayTime); flL.start();
   post.connect(flD); flD.connect(flFb); flFb.connect(flD); flD.connect(flW); flW.connect(post2);
   var nzBP = c.createBiquadFilter(), nzG = g(0), nzB = null; nzBP.type = 'bandpass'; nzBP.connect(nzG); nzG.connect(post2);
+  flW.connect(TAP[1]); rAmp.connect(TAP[2]); nzG.connect(TAP[3]);       // throw taps: flanger wet, scatter loop alone, riser
   function irReady() { if (wConv.buffer) return; var b = K.ir && K.ir(); if (b) try { wConv.buffer = b; } catch (e) {} }
   // ---------- knobs: ladders, live values, nudges ----------
   function R2N() { return SPB + 1; }                                     // unit: off + four rungs, as the amount ladders
@@ -118,11 +124,12 @@
     var fv = E.filter.v, span = Math.log(FHI / FLO);
     to(lp.frequency, FHI * Math.exp(-span * IPH * Math.max(0, -fv)), tau); to(hp.frequency, FLO * Math.exp(span * IPH * Math.max(0, fv)), tau);
     var e = E.echo.v, dT = beat / 2, now = c.currentTime, q = Math.pow(PHI, -6);
+    if (now >= thrU) {                                                    // a throw's tail owns the echo (and the pad's echo corner) until it has rung out
     if (Math.abs(dT - eDel.delayTime.value) > q * q) {                    // tempo change: no glide on delayTime (that warbles the pitch); dip, jump, return
       eRet.gain.setTargetAtTime(0, now, q); eFb.gain.setTargetAtTime(0, now, q);
       eDel.delayTime.setValueAtTime(dT, now + q * PHI * PHI); eRet.gain.setTargetAtTime(1, now + q * PHI * PHI, IPH);   // phi: jump once the tail is down (PHI^-4 s)
     }
-    to(eSend.gain, e, tau); eFb.gain.setTargetAtTime(fbTo(e * IPH), now + q * PHI * PHI, tau || IPH);
+    to(eSend.gain, e, tau); eFb.gain.setTargetAtTime(fbTo(e * IPH), now + q * PHI * PHI, tau || IPH); }
     to(wSend.gain, wConv.buffer ? E.wash.v * IPH : 0, tau);
     var cr = E.crush.v * (K.chip ? K.chip() : 1), b = cr ?   // bit-crush rides the chip share (owner 16:53)
        Math.round(Math.pow(PHI, 4) * (1 - cr)) + SPB : 0;   // phi: gentle bit depth, PHI^4 rungs above 4 bits
@@ -162,6 +169,72 @@
   // starting on the next bar line, the drop pushed to a phrase line (SPB bars) when long; the new track lands ON the drop with the
   // style's fade (bars x PHI^k) and a bass swap. While it runs, the chain belongs to it (apply() hands off); the sweeps are logged
   // as CC74 (brightness), CC93 (flanger) and CC91 (wash) for the .mid.
+  // THE THROW PLANNER (delay-throw design push 2, owner 18:34 AWST; 'a delay comes in and records' the scatter so its repeats ring on
+  // through the drop). x = drive through the echo's own coupling weights; throw amount A = x^(PHI^-1) (PHI^-1 + w_s space); every style gets w = 1 - (1 - w_ec)(1 - A), times the pumped
+  // depth. Sources p_i ~ PHI^-((3x - r_i)^2 / width) over ranks mix 0, flanger 1, scatter 2, riser 3 (send gains sqrt p, equal power):
+  // organic leans to a soft phrase tail, electronic to scatter and riser. Delay = F sixteenths, F in {2, 3, 4, 5, 8} (the roll's
+  // Fibonacci counts and the beat), drive picks (busier = shorter, mid = 3, the dotted eighth). Ring-out in bars: T60 = PHI^(ring (1 - (1 - A)(1 - w_s space))),
+  // g = min(cap, 10^(-3 delay / T60)). The taps open with the build and close linearly over the last sixteenth, exactly on the drop.
+  // The echo stays the throw's until thrU = drop + T60 x PHI, then apply() glides it home. Open ranges are dials at mid-range
+  // (exponents for PHI-power ranges): space weight w_s PHI^-2..PHI^-1, ring top PHI..PHI^3, cap PHI^-1..PHI^-1/2, send HP FLO PHI^4..PHI^6, rung offset 0.
+  // cite: 60 dB decay of a recirculating delay G = 10^(-3/n60) (J.O. Smith, PASP); dotted eighth for dub (Attack Magazine); HP the
+  // repeats above 200-300 Hz (atixUniverse); DJM ECHO / ECHO OUT keep the tail after the fader closes (Pioneer DJ DJM-S11 manual)
+  var TD = { sw: Math.pow(PHI, -(2 + 1) / 2), ring: Math.pow(PHI, (1 + 3) / 2), cap: Math.pow(PHI, -(1 + 1 / 2) / 2), hp: (4 + 6) / 2, wid: 1, dF: 0, lp: -(1 + 3) / 2, cd: 1 / 2, dC: 0, dk: (1 + 2) / 2, dr: (3 + 5) / 2 }, FDEL = [2, 3, SPB, 5, 8], thrU = 0, lastThr = null;
+  function thrX() { if (!K.dimX) return energy(); var X = K.dimX(cw('echo')); return 1 / (1 + Math.pow(PHI, -X.drive)); }   // the electronic zone: drive, heard through the echo's own coupling weights (the echo knob itself follows space since djdata)
+  function thrS() { if (!K.dimX) return 1 - energy(); var X = K.dimX(cw('echo')); return 1 / (1 + Math.pow(PHI, -X.space)); }   // space, heard through the same coupling weights
+  // owner 19:00 AWST: no either/or, a gradient. A = drive^(PHI^-1) x (PHI^-1 + w_s space), drive leads; space only lengthens and softens
+  // the tail (calm evenings: a gentle, longer echo, never the biggest throws). w_s is an open range PHI^-2..PHI^-1, dial at mid (exponent 3/2).
+  function throwAmt() { return clamp(Math.pow(clamp(thrX(), 0, 1), IPH) * (IPH + TD.sw * clamp(thrS(), 0, 1)), 0, 1); }   // A as one function (the exit mix adds its echo exits here later)
+  function planThrow(S, td, e0, d16, bar, dp) {
+    var x = clamp(thrX(), 0, 1), A = throwAmt(), wec = S.ec == null ? 0 : Math.pow(PHI, -S.ec), w = (1 - (1 - wec) * (1 - A)) * dp;
+    if (!(w > Math.pow(PHI, -8))) return null;                            // phi: below PHI^-8 there is nothing to throw
+    var u = energy(), F = FDEL[clamp(Math.round(1 + 2 * (1 / 2 - u) * (FDEL.length - 2) + TD.dF), 0, FDEL.length - 1)], dl = F * d16;
+    var sT = TD.sw * clamp(thrS(), 0, 1), T60 = Math.pow(PHI, TD.ring * (1 - (1 - A) * (1 - sT))), gF = fbTo(Math.min(TD.cap, Math.pow(10, -3 * dl / (T60 * bar))));
+    var p = [0, 1, 2, 3].map(function (r) { return Math.pow(PHI, -Math.pow(3 * x - r, 2) / TD.wid); }), ps = p.reduce(function (a, b) { return a + b; }, 0), q = Math.pow(PHI, -6);
+    tHP.frequency.setValueAtTime(FLO * Math.pow(PHI, TD.hp), e0);
+    if (Math.abs(eDel.delayTime.value - dl) > q * q) { var tj = Math.max(c.currentTime, e0 - q * PHI * PHI); eRet.gain.setTargetAtTime(0, tj, q); eDel.delayTime.setValueAtTime(dl, e0); eRet.gain.setTargetAtTime(1, e0, q); }   // dip, jump, return before the taps open
+    TAP.forEach(function (t, i) { var gi = Math.sqrt(p[i] / ps) * w; t.gain.cancelScheduledValues(c.currentTime); t.gain.setValueAtTime(0, e0); t.gain.linearRampToValueAtTime(gi, td - d16); t.gain.linearRampToValueAtTime(0, td); });
+    eFb.gain.cancelScheduledValues(e0); eFb.gain.setValueAtTime(gF, e0);
+    thrU = td + T60 * bar * PHI; var nw = c.currentTime; [tLP.frequency, tChop.gain].forEach(function (p) { p.cancelScheduledValues(nw); p.setValueAtTime(p.value, nw); });   // a tail still chopping hands over: gate home, LP to the new start
+    tChop.gain.setTargetAtTime(1, nw, IPH * IPH); tLP.frequency.setTargetAtTime(FHI * Math.pow(PHI, TD.lp), nw, IPH * IPH); tChop.gain.setValueAtTime(1, e0); tLP.frequency.setValueAtTime(FHI * Math.pow(PHI, TD.lp), e0);
+    return (lastThr = { bar: bar, beat: d16 * SPB, cn: td, x: x, s: thrS(), A: A, w: w, F: F, delay: dl, T60bars: T60, g: gF, taps: p.map(function (v) { return v / ps; }), drop: td, until: thrU });
+  }
+  // CHOP AND DARKENING (delay-throw design push 3, owner 18:34 AWST). After the drop the throw's return is gated (the loop rings on under
+  // it): F_c gates per beat, F_c in {2, 3, 5, 8} from drive (mid 3), duty PHI^-1; depth ramps over the first bar from 0 to
+  // cd' (1 - PHI^-(1 + PHI t d)), t = tension through the echo's coupling, d = key travel of the bridge (fifths / D, as travel() weighs it);
+  // edge tau from PHI^-8 s (bright: hard chop) to period x PHI^-3 (dark: tremolo), one gradient. The loop low-pass starts at FHI PHI^lp and
+  // falls PHI^-1 (1 + PHI t d) rungs per bar, so a far key at high tension goes dull in about two bars; both glide home at thrU.
+  // Gates are written PHI^-2 s ahead on the audio clock (like rollTick), about two events per slice, no oscillator.
+  // Open ranges as dials at mid: loop LP start exponent -3..-1 (lp), chop depth share 0..1 (cd, the formula at 1/2 x 2), rung offset (dC).
+  // cite: gate into delay (Attack Magazine; Sound On Sound 'gated delays'), tape-echo darkening (Smith PASP; Ableton Echo manual)
+  var FCH = [2, 3, 5, 8];
+  function thrT() { if (!K.dimX) return 1 - energy(); var X = K.dimX(cw('echo')); return 1 / (1 + Math.pow(PHI, -X.tension)); }
+  function thrB() { if (!K.dimX) return energy(); var X = K.dimX(cw('echo')); return 1 / (1 + Math.pow(PHI, -X.brightness)); }
+  function chopTick() {
+    var L = lastThr, now = c.currentTime, ah = Math.pow(PHI, -2); if (!L || now >= L.until || now < L.drop - ah) return;
+    if (L.td == null) {                                                    // once, at the drop: the bridge is planned by now
+      var kt = K.keyTravel ? K.keyTravel() : 0, tk = clamp(thrT() * clamp(kt || 0, 0, 1), 0, 1), k = IPH * (1 + PHI * tk);
+      L.td = tk; L.fall = k; L.dmax = clamp(2 * TD.cd, 0, 1) * (1 - Math.pow(PHI, -(1 + PHI * tk)));
+      L.Fc = FCH[clamp(Math.round(1 + 2 * (L.x - 1 / 2) * (FCH.length - 2) + TD.dC), 0, FCH.length - 1)]; L.per = L.beat / L.Fc;
+      L.edge = Math.pow(PHI, -8) * Math.pow(L.per * Math.pow(PHI, -3) / Math.pow(PHI, -8), 1 - clamp(thrB(), 0, 1));
+      var f0 = FHI * Math.pow(PHI, TD.lp), f1 = Math.max(FLO, f0 * Math.pow(PHI, -k * (L.until - L.drop) / L.bar));
+      tLP.frequency.setValueAtTime(f0, L.drop); tLP.frequency.exponentialRampToValueAtTime(f1, L.until); tLP.frequency.setTargetAtTime(FHI, L.until, IPH); L.cn = L.drop;
+    }
+    var end = Math.min(L.until, now + ah);
+    while (L.cn < end) { var t = L.cn, dc = L.dmax * clamp((t - L.drop) / L.bar, 0, 1);
+      if (t >= now) { tChop.gain.setTargetAtTime(1, t, L.edge); if (t + L.per * IPH < L.until) tChop.gain.setTargetAtTime(1 - dc, t + L.per * IPH, L.edge); }
+      L.cn += L.per; }
+    if (end >= L.until && !L.home) { L.home = 1; tChop.gain.setTargetAtTime(1, L.until, IPH); }   // after the last gate: home
+  }
+  // KICK DUCK (delay-throw design push 4): Web Audio has no sidechain, but the engine knows each kick when it schedules it, so the incoming
+  // track's kicks call kick(t) and, while a throw's tail rings, the return dips to PHI^-(dk - 1/2) (PHI^-1, -4.2 dB at mid) and on the
+  // drop's first downbeat to PHI^-(dk + 1/2) (PHI^-2, -8.4 dB), releasing with tau PHI^-dr s (PHI^-4 = 0.146 s at mid). Dials at mid:
+  // depth exponent 1..2 (dk), release exponent 3..5 (dr). cite: ducking delay ~150 ms release, 2-10 dB (Ableton Echo; Pioneer DJM ducking echo)
+  function kick(t) {
+    var L = lastThr; if (!L || !(t >= L.drop - Math.pow(PHI, -6)) || t >= L.until) return;
+    var first = Math.abs(t - L.drop) < L.beat / (2 * SPB), dip = Math.pow(PHI, -(TD.dk + (first ? 1 : -1) / 2)), a = Math.pow(PHI, -8);
+    tDuck.gain.setTargetAtTime(dip, t, a); tDuck.gain.setTargetAtTime(1, t + Math.pow(PHI, -6), Math.pow(PHI, -TD.dr)); L.ducks = (L.ducks || 0) + 1;
+  }
   var BARS = [1].concat(FIB.slice(1)), TXu = 0, txBusy = false, txLog = null, lastTx = null;   // Fibonacci bar counts 1, 2, 3, 5, 8
   var STY = [null,
     { n: 'techno cut',    r: 0, hp: 0, fl: 2, sc: 1, ec: 2, fade: -2 },   // unit: rung exponents
@@ -198,8 +271,8 @@
       flFb.gain.setValueAtTime(w * IPH * IPH, ts); flFb.gain.setTargetAtTime(0, td + tail, tail * IPH);
       flL.frequency.setValueAtTime(1 / bar, ts); flL.frequency.exponentialRampToValueAtTime(PHI * PHI / beat, td); flL.frequency.setTargetAtTime(0, td + tail, tail); }   // phi: sweep speeds up to PHI^2 per beat
     if ((w = wt(S, 'sc'))) { var nb = Math.max(1, Math.round(SPB * w)); for (var b = 0; b < nb; b++) rollAt(td - (nb - b) * beat, beat, FIB[clamp(1 + b + SPB - nb, 1, FIB.length - 1)]); }   // last beats, accelerating 1/2 .. 1/8
-    if ((w = wt(S, 'ec'))) { var e0 = td - Math.min(T, bar); eSend.gain.setValueAtTime(eSend.gain.value, e0); eSend.gain.linearRampToValueAtTime(w, td - d16); eSend.gain.linearRampToValueAtTime(0, td);   // closed exactly on the drop (linear over the last sixteenth): nothing of the incoming track enters
-      eFb.gain.setValueAtTime(fbTo(w * IPH), e0); eFb.gain.setTargetAtTime(0, td + tail, tail * IPH); }   // echo-out: only the outgoing feeds the tail
+    var thr = planThrow(S, td, td - Math.min(T, bar), d16, bar, dp); lastTx.thr = thr;   // echo-out is now the throw (style ec + the electronic zone): only the outgoing feeds the tail
+    if (thr) { eSend.gain.setValueAtTime(eSend.gain.value, td - d16); eSend.gain.linearRampToValueAtTime(0, td); }   // the knob's own send closes on the drop too, so the incoming kick never enters the throw
     if ((w = wt(S, 'wa')) && wConv.buffer) { wSend.gain.setValueAtTime(wSend.gain.value, ts); wSend.gain.linearRampToValueAtTime(w * IPH, td); wSend.gain.setTargetAtTime(0, td, tail * IPH); }
     if ((w = wt(S, 'nz'))) { var ns = c.createBufferSource(); ns.buffer = noiseBuf(); ns.loop = true; ns.connect(nzBP); ns.start(ts); ns.stop(td + tail);
       nzBP.frequency.setValueAtTime(FLO * Math.pow(PHI, PHI * PHI * PHI * PHI), ts); nzBP.frequency.exponentialRampToValueAtTime(FHI * IPH * IPH, td);   // phi: riser band PHI^PHI^4 x FLO -> PHI^-2 x FHI
@@ -294,9 +367,10 @@
   apply(); K.fx({ inp: inp, out: out });                                  // the start engine crossfades dry -> this chain over PHI^2 s
   var EV = K.every || setInterval;                                        // phases on the one clock (core), else timers
   EV(function () { if (!document.hidden) apply(); }, IPH * MS);   // phi: knobs follow the live pumps every PHI^-1 s
-  EV(rollTick, Math.pow(PHI, -4) * MS);                          // phi: roll look-ahead every PHI^-4 s
+  EV(rollTick, Math.pow(PHI, -4) * MS);
+  EV(chopTick, Math.pow(PHI, -4) * MS);                          // phi: chop look-ahead every PHI^-4 s                          // phi: roll look-ahead every PHI^-4 s
   build();
-  D.fx = { get eff() { return JSON.parse(JSON.stringify(E)); }, get nudge() { return JSON.parse(JSON.stringify(nudge)); }, get seed() { return seed; }, get rolls() { return rolls; }, back: back, get u() { return JSON.parse(JSON.stringify(uk)); }, reroll: function (k) { FX.forEach(function (f) { if (f.k === k) reroll(f); }); }, get scatter() { return { base: RB, trigHz: TRG, widthHz: TRG * PHI, ampHz: lfo.frequency.value, amp: rAmp.gain.value, lastDiv: lastF }; },
+  D.fx = { kick: kick, get lastThrow() { return lastThr; }, throwDial: function (k, v) { if (TD.hasOwnProperty(k) && isFinite(v)) TD[k] = +v; return TD[k]; }, get eff() { return JSON.parse(JSON.stringify(E)); }, get nudge() { return JSON.parse(JSON.stringify(nudge)); }, get seed() { return seed; }, get rolls() { return rolls; }, back: back, get u() { return JSON.parse(JSON.stringify(uk)); }, reroll: function (k) { FX.forEach(function (f) { if (f.k === k) reroll(f); }); }, get scatter() { return { base: RB, trigHz: TRG, widthHz: TRG * PHI, ampHz: lfo.frequency.value, amp: rAmp.gain.value, lastDiv: lastF }; },
     random: function (s) { draw(s === undefined ? (seed == null ? Math.floor(Date.now() / MS) : seed + 1) : s); },
     set: function (k, i) { FX.forEach(function (f) { if (f.k === k) nudge[k] = f.kind === 'pick' ? i : i - liveIdx(f, energy()); }); apply(); save(); }, energy: energy, transition: transition,
     pad: function (m) { PAD = m ? { filter: +m.filter || 0, echo: +m.echo || 0, wash: +m.wash || 0, crush: +m.crush || 0, flw: +m.flw || 0, r: +m.r || 0 } : null; apply(PAD ? Math.pow(PHI, -4) : IPH); },   // phi: pad glides tau PHI^-4 s, release glides home tau PHI^-1 s
